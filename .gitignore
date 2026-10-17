@@ -1,0 +1,25 @@
+# Maven
+target/
+dependency-reduced-pom.xml
+
+# Node / 前端
+node_modules/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# 文档
+docs/
+.codebuddy/
+
+# 日志与运行时产物
+logs/
+*.log
+data/
+
+# 系统文件
+Thumbs.db
+.DS_Store

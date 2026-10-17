@@ -1,0 +1,64 @@
+/** 与后端 DTO 对齐的类型定义 */
+
+export interface ApiResult<T> {
+  code: number
+  msg: string
+  data: T
+}
+
+export interface NearbyBike {
+  bikeId: string
+  distM: number
+  lng: number
+  lat: number
+}
+
+export interface TracePoint {
+  ts: number
+  lng: number
+  lat: number
+  speed: number
+}
+
+export interface TraceResponse {
+  bikeId: string
+  rawCount: number
+  simplifiedCount: number
+  jtsSimplifiedCount: number
+  raw: TracePoint[]
+  simplified: TracePoint[]
+}
+
+export interface SimilarityResult {
+  bikeA: string
+  bikeB: string
+  pointsA: number
+  pointsB: number
+  dtw: number
+  frechet: number
+  lcss: number
+  edr: number
+}
+
+export interface FenceDto {
+  fenceId: number | null
+  name: string
+  coordinates: [number, number][]
+}
+
+export interface HeatCellDto {
+  h3Index: string
+  windowStart: number
+  count: number
+  boundary: [number, number][]
+}
+
+export interface FenceAlert {
+  fenceId: number
+  fenceName: string
+  bikeId: string
+  event: 'ENTER' | 'EXIT'
+  lng: number
+  lat: number
+  ts: number
+}

@@ -1,0 +1,117 @@
+name: coordinates-vm
+
+# CentOS7 虚拟机版（8G 内存）。
+# 内存预算：宿主 + Docker daemon ≈ 1G，容器合计 ≈ 5.9G，留 ~1G 余量防 OOM。
+# 镜像由 Windows 导入（docker load），tag 已重命名为通用名，与导出脚本配套。
+
+services:
+  redis:
+    image: redis:6.2.6
+    container_name: redis-6.2.6
+    mem_limit: 256m
+    ports:
+      - "6379:6379"
+    # 与 Windows 上一致：无密码；protected-mode 必须关，否则宿主机连不上
+    command: ["redis-server", "--protected-mode", "no"]
+    volumes:
+      - ./data/redis:/data
+    networks: [middleware]
+
+  mongodb:
+    image: bitnami/mongodb:6.0
+    container_name: mongodb-6.2.6
+    mem_limit: 512m
+    ports:
+      - "27017:27017"
+    # 未设置密码环境变量 => 免认证，与 Windows 上一致
+    volumes:
+      - ./data/mongodb:/bitnami/mongodb
+    networks: [middleware]
+
+  tdengine:
+    image: tdengine/tdengine:3.3.3.0
+    container_name: tdengine
+    mem_limit: 768m
+    ports:
+      - "6030:6030"
+      - "6041:6041"
+    volumes:
+      - ./data/tdengine/data:/var/lib/taos
+      - ./data/tdengine/log:/var/log/taos
+    networks: [middleware]
+
+  zookeeper:
+    image: bitnami/zookeeper:3.5.9
+    container_name: zookeeper
+    mem_limit: 512m
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - ./data/zookeeper:/bitnami/zookeeper
+    networks: [middleware]
+
+  kafka:
+    image: wurstmeister/kafka:2.13-2.8.1
+    container_name: kafka
+    mem_limit: 768m
+    ports:
+      - "9092:29092"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,PLAINTEXT_HOST://${KAFKA_HOST_IP:-localhost}:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      # 限制堆，防止吃满 768m 限额
+      - KAFKA_HEAP_OPTS=-Xmx512m -Xms256m
+    volumes:
+      - ./data/kafka:/kafka
+    networks: [middleware]
+
+  jobmanager:
+    image: apache/flink:1.17.2
+    container_name: flink-jobmanager
+    command: jobmanager
+    mem_limit: 1400m
+    ports:
+      - "8081:8081"
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1280m
+        state.backend: rocksdb
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        state.backend.rocksdb.localdir: /tmp/flink/rocksdb
+        # slot 数 = 各作业顶点并行度之和（GpsClean 4 + Fence 3 + H3 2 = 9）
+        taskmanager.numberOfTaskSlots: 9
+    volumes:
+      - ./data/flink/checkpoints:/opt/flink/checkpoints
+    networks: [middleware]
+
+  taskmanager:
+    image: apache/flink:1.17.2
+    container_name: flink-taskmanager
+    command: taskmanager
+    depends_on:
+      - jobmanager
+    mem_limit: 1700m
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.memory.process.size: 1536m
+        state.backend: rocksdb
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        state.backend.rocksdb.localdir: /tmp/flink/rocksdb
+        taskmanager.numberOfTaskSlots: 9
+    volumes:
+      - ./data/flink/checkpoints:/opt/flink/checkpoints
+    networks: [middleware]
+
+networks:
+  middleware:
+    name: middleware
