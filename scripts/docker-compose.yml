@@ -31,6 +31,10 @@ services:
   tdengine:
     image: tdengine/tdengine:3.3.3.0
     container_name: tdengine
+    # TDengine 元数据按 FQDN 落盘，必须固定 hostname；否则容器重建后随机 ID 变化，原有库表读不出
+    hostname: tdengine
+    environment:
+      - TAOS_FQDN=tdengine
     mem_limit: 768m
     ports:
       - "6030:6030"
