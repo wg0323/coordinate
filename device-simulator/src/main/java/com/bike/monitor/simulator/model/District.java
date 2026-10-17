@@ -78,4 +78,13 @@ public enum District {
     public static List<District> all() {
         return Arrays.asList(values());
     }
+
+    public static District byCode(String code) {
+        for (District district : values()) {
+            if (district.code.equals(code)) {
+                return district;
+            }
+        }
+        return null;
+    }
 }

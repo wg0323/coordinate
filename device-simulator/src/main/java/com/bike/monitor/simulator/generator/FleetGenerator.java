@@ -8,23 +8,21 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * 按区县建模表生成车队：bikeId、区县、常驻点。
+ * 按区县建模表生成全量车队（84,840 辆）：bikeId、区县、常驻点。
+ * 仅用于首次启动向 Mongo seed 车队台账。
  */
 public class FleetGenerator {
 
-    private final double vehicleRatio;
     private final Random random;
 
-    public FleetGenerator(double vehicleRatio, long seed) {
-        this.vehicleRatio = vehicleRatio;
+    public FleetGenerator(long seed) {
         this.random = new Random(seed);
     }
 
     public List<Bike> generate() {
         List<Bike> fleet = new ArrayList<>();
         for (District district : District.all()) {
-            int count = (int) Math.round(district.getVehicles() * vehicleRatio);
-            for (int i = 0; i < count; i++) {
+            for (int i = 0; i < district.getVehicles(); i++) {
                 String bikeId = "BM" + district.getCode()
                         + String.format("%06d", i);
                 double homeLng = district.getLng() + (random.nextDouble() * 2 - 1) * district.getLngSpan();

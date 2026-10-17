@@ -8,11 +8,14 @@ import lombok.Getter;
 @Getter
 public class SimConfig {
 
-    private String kafkaServers = "localhost:9092";
+    /** Kafka 在虚拟机 192.168.1.25（与中间件统一环境），本地不再有 broker */
+    private String kafkaServers = "192.168.1.25:9092";
     private String topic = "bike-gps-raw";
+    /** 车队台账 MongoDB：首次启动 seed 全量车队，此后从库中加载 */
+    private String mongoUri = "mongodb://192.168.1.25:27017/bike_monitor";
     /** 时间加速倍数：60 = 1 真实秒 ≈ 1 模拟分钟（默认值便于演示快速出数据） */
     private double speedFactor = 60;
-    /** 车辆比例（在 1:10 基础上再缩放） */
+    /** 活跃车辆抽样比例（从 Mongo 全量车队台账中抽样，固定种子保证跨重启稳定） */
     private double vehicleRatio = 1.0;
     /** 脏数据注入概率（每次上报） */
     private double driftRate = 0.02;
@@ -54,6 +57,9 @@ public class SimConfig {
                 break;
             case "topic":
                 topic = value;
+                break;
+            case "mongo":
+                mongoUri = value;
                 break;
             case "speed-factor":
                 speedFactor = Double.parseDouble(value);

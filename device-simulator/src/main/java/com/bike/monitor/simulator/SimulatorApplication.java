@@ -8,17 +8,23 @@ import com.bike.monitor.simulator.model.Bike;
 import com.bike.monitor.simulator.noise.DriftInjector;
 import com.bike.monitor.simulator.report.Reporter;
 import com.bike.monitor.simulator.scenario.CompanionScenario;
+import com.bike.monitor.simulator.store.FleetStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 设备模拟器入口。
- * 示例：java -jar device-simulator.jar --speed-factor=60 --vehicle-ratio=1 --duration-sec=120
+ * 示例：java -jar device-simulator.jar --kafka=192.168.1.25:9092 --speed-factor=20 --vehicle-ratio=0.1
+ *
+ * <p>车队台账存于 MongoDB（bikes 集合）：首次启动 seed 全量 84,840 辆，
+ * 之后每次启动从库中加载，再按 --vehicle-ratio 抽样出本次活跃车辆。</p>
  */
 public class SimulatorApplication {
 
@@ -26,13 +32,11 @@ public class SimulatorApplication {
 
     public static void main(String[] args) throws Exception {
         SimConfig config = SimConfig.parse(args);
-        log.info("模拟器启动：kafka={}, topic={}, speedFactor={}, vehicleRatio={}, driftRate={}, companionPairs={}",
-                config.getKafkaServers(), config.getTopic(), config.getSpeedFactor(),
-                config.getVehicleRatio(), config.getDriftRate(), config.getCompanionPairs());
+        log.info("模拟器启动：kafka={}, topic={}, mongo={}, speedFactor={}, vehicleRatio={}, driftRate={}, companionPairs={}",
+                config.getKafkaServers(), config.getTopic(), config.getMongoUri(),
+                config.getSpeedFactor(), config.getVehicleRatio(), config.getDriftRate(), config.getCompanionPairs());
 
-        FleetGenerator fleetGenerator = new FleetGenerator(config.getVehicleRatio(), 42L);
-        List<Bike> fleet = fleetGenerator.generate();
-        log.info("车队规模：{} 辆", fleet.size());
+        List<Bike> fleet = loadFleet(config);
 
         CompanionScenario companion = new CompanionScenario();
         companion.bind(fleet, config.getCompanionPairs(), 42L);
@@ -63,5 +67,38 @@ public class SimulatorApplication {
         log.info("模拟结束，共发送 {} 条", reporter.getSent());
         reporter.close();
         statExecutor.shutdownNow();
+    }
+
+    /** 车队来源：Mongo bikes 集合（首次启动自动 seed 全量），再按 vehicleRatio 抽样活跃车辆 */
+    private static List<Bike> loadFleet(SimConfig config) {
+        List<Bike> fleet;
+        try (FleetStore store = new FleetStore(config.getMongoUri())) {
+            if (store.count() == 0) {
+                fleet = new FleetGenerator(42L).generate();
+                store.saveAll(fleet);
+                log.info("车队台账为空，已 seed 入库 {} 辆（--mongo={}）", fleet.size(), config.getMongoUri());
+            } else {
+                fleet = store.loadAll();
+                log.info("从 Mongo 加载车队台账：{} 辆", fleet.size());
+            }
+        }
+        fleet = sample(fleet, config.getVehicleRatio());
+        log.info("本次活跃车辆：{} 辆（vehicle-ratio={}）", fleet.size(), config.getVehicleRatio());
+        return fleet;
+    }
+
+    /** 固定种子按序抽样：同一份数据每次启动抽中的车辆完全一致，模拟时钟/事件序列可复现 */
+    private static List<Bike> sample(List<Bike> fleet, double ratio) {
+        if (ratio >= 1.0) {
+            return fleet;
+        }
+        Random random = new Random(42L);
+        List<Bike> active = new ArrayList<>();
+        for (Bike bike : fleet) {
+            if (random.nextDouble() < ratio) {
+                active.add(bike);
+            }
+        }
+        return active;
     }
 }
