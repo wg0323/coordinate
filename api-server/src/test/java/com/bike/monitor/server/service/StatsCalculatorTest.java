@@ -46,13 +46,25 @@ class StatsCalculatorTest {
     }
 
     @Test
+    void should_count_online_when_ts_is_in_simulated_future() {
+        // 模拟器加速时钟：上报 ts 超前墙钟是设计行为，不能当脏数据剔除
+        Map<String, String> hash = new HashMap<>();
+        hash.put("b1", "0,中心城区," + (NOW + 81 * 60_000)); // 超前 81 分钟
+        StatsDto s = StatsCalculator.compute(100L, hash, NOW);
+        assertEquals(1L, s.getOnline());
+        assertEquals(1L, s.getRiding());
+    }
+
+    @Test
     void should_resolve_point_status_by_locked_and_freshness() {
         BikeStatusCodec.StatusEntry riding = new BikeStatusCodec.StatusEntry(false, "通州", NOW - 60_000);
         BikeStatusCodec.StatusEntry idle = new BikeStatusCodec.StatusEntry(true, "通州", NOW - 60_000);
         BikeStatusCodec.StatusEntry stale = new BikeStatusCodec.StatusEntry(false, "通州", NOW - 400_000);
+        BikeStatusCodec.StatusEntry future = new BikeStatusCodec.StatusEntry(false, "通州", NOW + 81 * 60_000);
         assertEquals("riding", StatsCalculator.statusOf(riding, NOW));
         assertEquals("idle", StatsCalculator.statusOf(idle, NOW));
         assertEquals("unknown", StatsCalculator.statusOf(stale, NOW));
+        assertEquals("riding", StatsCalculator.statusOf(future, NOW)); // 模拟时钟超前也算在线
         assertEquals("unknown", StatsCalculator.statusOf(null, NOW));
     }
 

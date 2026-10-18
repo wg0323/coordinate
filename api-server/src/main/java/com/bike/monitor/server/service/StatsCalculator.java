@@ -21,12 +21,13 @@ public final class StatsCalculator {
     private StatsCalculator() {
     }
 
-    /** 单车状态推导：在线未锁=riding，在线已锁=idle，其余（超窗/脏数据/null）=unknown */
+    /** 单车状态推导：在线未锁=riding，在线已锁=idle，其余（超窗/脏数据/null）=unknown。
+     * 注意 ts 只做下界新鲜度判断：模拟器加速时钟下 ts 超前墙钟是设计行为，不做上界剔除。 */
     public static String statusOf(BikeStatusCodec.StatusEntry s, long nowMs) {
         if (s == null) {
             return "unknown";
         }
-        if (nowMs - s.getTs() > ONLINE_WINDOW_MS || s.getTs() > nowMs + ONLINE_WINDOW_MS) {
+        if (nowMs - s.getTs() > ONLINE_WINDOW_MS) {
             return "unknown";
         }
         return s.isLocked() ? "idle" : "riding";
@@ -42,7 +43,7 @@ public final class StatsCalculator {
             if (s == null) {
                 continue;
             }
-            if (nowMs - s.getTs() > ONLINE_WINDOW_MS || s.getTs() > nowMs + ONLINE_WINDOW_MS) {
+            if (nowMs - s.getTs() > ONLINE_WINDOW_MS) {
                 continue;
             }
             online++;
