@@ -4,6 +4,7 @@
     <HeatLayer v-model:enabled="heatAuto" :bikes="bikes" />
     <BikeLayer v-if="bikesVisible" :bikes="bikes" />
     <FenceStatusLayer v-if="toggles.fences" :stats="fenceStats" />
+    <DensityGridLayer v-if="toggles.grid" :bikes="bikes" />
     <OpsLayer v-if="toggles.ops" />
 
     <!-- 图层开关控制条 -->
@@ -52,6 +53,7 @@ import MapView from '../MapView.vue'
 import HeatLayer from '../HeatLayer.vue'
 import BikeLayer from './BikeLayer.vue'
 import OpsLayer from './OpsLayer.vue'
+import DensityGridLayer from './DensityGridLayer.vue'
 import FenceStatusLayer from './FenceStatusLayer.vue'
 import { fetchBBox } from '../../api/nearby'
 import { getMap, getMapAsync } from '../../mapStore'
@@ -68,20 +70,22 @@ const TOGGLES = [
   { key: 'bikes', label: '车辆分布' },
   { key: 'fences', label: '电子围栏' },
   { key: 'heat', label: '车辆热力' },
+  { key: 'grid', label: '密度网格' },
   { key: 'ops', label: '运维车辆' }
 ] as const
 
-const toggles = ref<{ bikes: boolean; fences: boolean; heat: boolean; ops: boolean }>({
+const toggles = ref<{ bikes: boolean; fences: boolean; heat: boolean; grid: boolean; ops: boolean }>({
   bikes: true,
   fences: true,
-  heat: false,
+  heat: true,
+  grid: true,
   ops: false
 })
 
 const bikes = ref<NearbyBike[]>([])
 const zoom = ref(12)
 
-// zoom 联动：<11 时热力云即聚合视图，散点隐藏；热力与散点互斥，避免散点盖住热力梯度
+// zoom 联动：<11 时热力云即聚合视图，散点隐藏；网格只是悬停查询层，不占视觉，可与散点/热力并存
 const bikesVisible = computed(() => toggles.value.bikes && zoom.value >= 11 && !toggles.value.heat)
 const heatAuto = computed(() => toggles.value.heat || zoom.value < 11)
 
