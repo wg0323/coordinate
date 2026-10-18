@@ -13,10 +13,10 @@
       <MapArea :stats="stats" :fence-stats="fenceStats" />
     </main>
     <aside class="area-right">
-      <div class="panel ph">实时告警</div>
-      <div class="panel ph">区域骑行量排行</div>
-      <div class="panel ph">今日骑行趋势</div>
-      <div class="panel ph">智能调度建议</div>
+      <AlertPanel />
+      <DistrictRankPanel :stats="stats" />
+      <TrendPanel />
+      <DispatchPanel />
     </aside>
     <footer class="area-bottom">
       <div class="panel bottombar-placeholder">底部数据带</div>
@@ -31,6 +31,10 @@ import BikeStatusPanel from './components/dashboard/BikeStatusPanel.vue'
 import FenceOverviewPanel from './components/dashboard/FenceOverviewPanel.vue'
 import OrderFeedPanel from './components/dashboard/OrderFeedPanel.vue'
 import MapArea from './components/dashboard/MapArea.vue'
+import AlertPanel from './components/dashboard/AlertPanel.vue'
+import DistrictRankPanel from './components/dashboard/DistrictRankPanel.vue'
+import TrendPanel from './components/dashboard/TrendPanel.vue'
+import DispatchPanel from './components/dashboard/DispatchPanel.vue'
 import { fetchFenceStats, fetchStats } from './api/stats'
 import { usePolling } from './composables/usePolling'
 import type { FenceStatsDto, StatsDto } from './types/stats'
