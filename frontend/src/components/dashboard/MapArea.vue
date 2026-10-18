@@ -3,6 +3,7 @@
     <MapView dark />
     <HeatLayer v-model:enabled="heatAuto" :cells="heatCells" />
     <BikeLayer v-if="bikesVisible" :bikes="bikes" />
+    <FenceStatusLayer v-if="toggles.fences" :stats="fenceStats" />
     <OpsLayer v-if="toggles.ops" />
 
     <!-- 图层开关控制条 -->
@@ -37,6 +38,7 @@ import MapView from '../MapView.vue'
 import HeatLayer from '../HeatLayer.vue'
 import BikeLayer from './BikeLayer.vue'
 import OpsLayer from './OpsLayer.vue'
+import FenceStatusLayer from './FenceStatusLayer.vue'
 import { fetchBBox } from '../../api/nearby'
 import { fetchHeat } from '../../api/heat'
 import { getMapAsync } from '../../mapStore'
@@ -44,18 +46,20 @@ import { usePolling } from '../../composables/usePolling'
 import { fmtNum } from '../../utils/format'
 import { TODAY_ORDERS } from '../../mock/dashboard'
 import type { NearbyBike, HeatCellDto } from '../../types'
-import type { StatsDto } from '../../types/stats'
+import type { FenceStatsDto, StatsDto } from '../../types/stats'
 
-const props = defineProps<{ stats: StatsDto | null }>()
+const props = defineProps<{ stats: StatsDto | null; fenceStats: FenceStatsDto | null }>()
 
 const TOGGLES = [
   { key: 'bikes', label: '车辆分布' },
+  { key: 'fences', label: '电子围栏' },
   { key: 'heat', label: '热力聚合' },
   { key: 'ops', label: '运维车辆' }
 ] as const
 
-const toggles = ref<{ bikes: boolean; heat: boolean; ops: boolean }>({
+const toggles = ref<{ bikes: boolean; fences: boolean; heat: boolean; ops: boolean }>({
   bikes: true,
+  fences: true,
   heat: false,
   ops: false
 })

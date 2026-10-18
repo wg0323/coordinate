@@ -10,7 +10,7 @@
       <div class="panel ph">实时订单流</div>
     </aside>
     <main class="area-center">
-      <MapArea :stats="stats" />
+      <MapArea :stats="stats" :fence-stats="fenceStats" />
     </main>
     <aside class="area-right">
       <div class="panel ph">实时告警</div>
@@ -29,13 +29,14 @@ import { ref } from 'vue'
 import KpiPanel from './components/dashboard/KpiPanel.vue'
 import BikeStatusPanel from './components/dashboard/BikeStatusPanel.vue'
 import MapArea from './components/dashboard/MapArea.vue'
-import { fetchStats } from './api/stats'
+import { fetchFenceStats, fetchStats } from './api/stats'
 import { usePolling } from './composables/usePolling'
-import type { StatsDto } from './types/stats'
+import type { FenceStatsDto, StatsDto } from './types/stats'
 
 // 大屏布局壳：grid 区域命名 top/left/center/right/bottom，各面板由子组件对号入座
-// stats 统一轮询（10s），所有消费面板吃同一份数据
+// stats（10s）与 fenceStats（30s）统一轮询，所有消费面板吃同一份数据
 const stats = ref<StatsDto | null>(null)
+const fenceStats = ref<FenceStatsDto | null>(null)
 
 async function pollStats() {
   try {
@@ -45,7 +46,16 @@ async function pollStats() {
   }
 }
 
+async function pollFenceStats() {
+  try {
+    fenceStats.value = await fetchFenceStats()
+  } catch {
+    /* 保留上次数据 */
+  }
+}
+
 usePolling(pollStats, 10_000)
+usePolling(pollFenceStats, 30_000)
 </script>
 
 <style scoped>

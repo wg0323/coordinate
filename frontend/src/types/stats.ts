@@ -15,7 +15,7 @@ export interface DistrictCountDto {
   riding: number
 }
 
-/** 围栏统计（Task 5 实现 /api/fence/stats 后生效） */
+/** 围栏统计（/api/fence/stats） */
 export interface FenceStatsDto {
   total: number
   normal: number
@@ -25,6 +25,8 @@ export interface FenceStatsDto {
   noCapacity: number
   avgLoadRate: number
   overflowed: FenceCellStatDto[]
+  /** JSON 序列化后 key 为字符串型 fenceId */
+  cells: Record<string, FenceCellStatDto>
 }
 
 export interface FenceCellStatDto {
