@@ -4,6 +4,7 @@ body,
 #app {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 :root {
   --bg-main: #0a1628;

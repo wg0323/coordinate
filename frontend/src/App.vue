@@ -69,6 +69,7 @@ usePolling(pollFenceStats, 30_000)
 <style scoped>
 .screen {
   height: 100%;
+  box-sizing: border-box;
   display: grid;
   grid-template-areas:
     'top top top'
