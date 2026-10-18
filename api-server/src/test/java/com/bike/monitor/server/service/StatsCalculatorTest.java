@@ -46,6 +46,17 @@ class StatsCalculatorTest {
     }
 
     @Test
+    void should_resolve_point_status_by_locked_and_freshness() {
+        BikeStatusCodec.StatusEntry riding = new BikeStatusCodec.StatusEntry(false, "通州", NOW - 60_000);
+        BikeStatusCodec.StatusEntry idle = new BikeStatusCodec.StatusEntry(true, "通州", NOW - 60_000);
+        BikeStatusCodec.StatusEntry stale = new BikeStatusCodec.StatusEntry(false, "通州", NOW - 400_000);
+        assertEquals("riding", StatsCalculator.statusOf(riding, NOW));
+        assertEquals("idle", StatsCalculator.statusOf(idle, NOW));
+        assertEquals("unknown", StatsCalculator.statusOf(stale, NOW));
+        assertEquals("unknown", StatsCalculator.statusOf(null, NOW));
+    }
+
+    @Test
     void should_group_district_counts_and_skip_blank_or_malformed() {
         Map<String, String> hash = new HashMap<>();
         hash.put("b1", "0,中心城区," + FRESH);

@@ -23,4 +23,7 @@ public class NearbyBike {
     private double lng;
     @Schema(description = "纬度")
     private double lat;
+    /** 车辆状态：riding=骑行中 idle=空闲 unknown=无状态数据（/nearby 恒为 unknown） */
+    @Schema(description = "车辆状态 riding|idle|unknown；/nearby 恒为 unknown")
+    private String status;
 }

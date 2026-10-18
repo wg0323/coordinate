@@ -1,11 +1,14 @@
 <template>
-  <div id="map" class="map-view"></div>
+  <div id="map" class="map-view" :class="{ 'map-dark': dark }"></div>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import L from 'leaflet'
 import { setMap } from '../mapStore'
+
+// dark: 大屏深色模式（CSS 滤镜方案——天地图无官方深色样式）
+const props = defineProps<{ dark?: boolean }>()
 
 onMounted(() => {
   const map = L.map('map', { zoomControl: true }).setView([39.9, 116.4], 12)
@@ -28,5 +31,9 @@ onMounted(() => {
 .map-view {
   height: 100%;
   width: 100%;
+}
+/* 深色大屏：反转亮度 + 色相旋转，输出近似暗夜蓝底图 */
+.map-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.1);
 }
 </style>

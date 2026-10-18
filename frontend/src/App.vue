@@ -10,7 +10,7 @@
       <div class="panel ph">实时订单流</div>
     </aside>
     <main class="area-center">
-      <div class="panel ph map-placeholder">中央地图区域</div>
+      <MapArea :stats="stats" />
     </main>
     <aside class="area-right">
       <div class="panel ph">实时告警</div>
@@ -28,6 +28,7 @@
 import { ref } from 'vue'
 import KpiPanel from './components/dashboard/KpiPanel.vue'
 import BikeStatusPanel from './components/dashboard/BikeStatusPanel.vue'
+import MapArea from './components/dashboard/MapArea.vue'
 import { fetchStats } from './api/stats'
 import { usePolling } from './composables/usePolling'
 import type { StatsDto } from './types/stats'
@@ -84,13 +85,6 @@ usePolling(pollStats, 10_000)
 }
 .topbar-placeholder,
 .bottombar-placeholder {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-}
-.map-placeholder {
   height: 100%;
   display: flex;
   align-items: center;

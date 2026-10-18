@@ -21,6 +21,17 @@ public final class StatsCalculator {
     private StatsCalculator() {
     }
 
+    /** 单车状态推导：在线未锁=riding，在线已锁=idle，其余（超窗/脏数据/null）=unknown */
+    public static String statusOf(BikeStatusCodec.StatusEntry s, long nowMs) {
+        if (s == null) {
+            return "unknown";
+        }
+        if (nowMs - s.getTs() > ONLINE_WINDOW_MS || s.getTs() > nowMs + ONLINE_WINDOW_MS) {
+            return "unknown";
+        }
+        return s.isLocked() ? "idle" : "riding";
+    }
+
     public static StatsDto compute(long total, Map<String, String> statusHash, long nowMs) {
         long online = 0;
         long riding = 0;

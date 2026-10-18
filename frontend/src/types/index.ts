@@ -11,6 +11,8 @@ export interface NearbyBike {
   distM: number
   lng: number
   lat: number
+  /** riding | idle | unknown */
+  status?: string
 }
 
 export interface SimilarityResult {
