@@ -1,6 +1,7 @@
 package com.bike.monitor.server.common;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -17,6 +18,12 @@ public class GlobalExceptionHandler {
     public ApiResult<Void> handleBiz(BizException e) {
         log.warn("业务异常: {}", e.getMessage());
         return ApiResult.error(e.getMessage());
+    }
+
+    /** 客户端主动断开（页面刷新/取消请求/响应写超时）：浏览器已无接收方，不再写响应体，仅记一行 */
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbort(ClientAbortException e) {
+        log.warn("客户端已断开连接：{}", e.getMessage());
     }
 
     /** 兜底：完整堆栈进日志，前端只给通用提示 */
