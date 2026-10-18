@@ -4,8 +4,8 @@
       <div class="panel topbar-placeholder">顶部标题栏</div>
     </header>
     <aside class="area-left">
-      <div class="panel ph">核心指标</div>
-      <div class="panel ph">车辆状态分布</div>
+      <KpiPanel :stats="stats" />
+      <BikeStatusPanel :stats="stats" />
       <div class="panel ph">围栏状态概览</div>
       <div class="panel ph">实时订单流</div>
     </aside>
@@ -25,7 +25,26 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import KpiPanel from './components/dashboard/KpiPanel.vue'
+import BikeStatusPanel from './components/dashboard/BikeStatusPanel.vue'
+import { fetchStats } from './api/stats'
+import { usePolling } from './composables/usePolling'
+import type { StatsDto } from './types/stats'
+
 // 大屏布局壳：grid 区域命名 top/left/center/right/bottom，各面板由子组件对号入座
+// stats 统一轮询（10s），所有消费面板吃同一份数据
+const stats = ref<StatsDto | null>(null)
+
+async function pollStats() {
+  try {
+    stats.value = await fetchStats()
+  } catch {
+    /* 保留上次数据 */
+  }
+}
+
+usePolling(pollStats, 10_000)
 </script>
 
 <style scoped>
@@ -78,9 +97,17 @@
   justify-content: center;
   color: var(--text-dim);
 }
-/* 左右面板占位平分，后续挂入真实组件后移除 */
-.area-left .panel,
-.area-right .panel {
+/* 左右面板平分；占位面板由后续 Task 替换 */
+.area-left > *,
+.area-right > * {
   flex: 1;
+  min-height: 0;
+}
+.area-left .ph,
+.area-right .ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
 }
 </style>
