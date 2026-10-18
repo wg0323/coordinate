@@ -13,22 +13,6 @@ export interface NearbyBike {
   lat: number
 }
 
-export interface TracePoint {
-  ts: number
-  lng: number
-  lat: number
-  speed: number
-}
-
-export interface TraceResponse {
-  bikeId: string
-  rawCount: number
-  simplifiedCount: number
-  jtsSimplifiedCount: number
-  raw: TracePoint[]
-  simplified: TracePoint[]
-}
-
 export interface SimilarityResult {
   bikeA: string
   bikeB: string

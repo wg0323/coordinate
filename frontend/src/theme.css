@@ -1,0 +1,100 @@
+/* 大屏设计 tokens —— 深色科技风（方案视觉规范） */
+:root {
+  --bg-main: #0a1628;
+  --bg-panel: rgba(13, 33, 55, 0.85);
+  --accent: #00d4ff;
+  --ok: #00ff88;
+  --danger: #ff4757;
+  --warn: #ffa502;
+  --info: #ffdd59;
+  --text-main: #e6f1ff;
+  --text-dim: #7f9bbd;
+  --panel-border: rgba(0, 212, 255, 0.3);
+  --font-num: 'Roboto Mono', 'Consolas', monospace;
+}
+
+/* 面板：半透明背景 + 发光边框 + 四角装饰线 */
+.panel {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15) inset, 0 0 8px rgba(0, 212, 255, 0.1);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+.panel::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--accent);
+  border-left: 2px solid var(--accent);
+}
+.panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  padding-left: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.num {
+  font-family: var(--font-num);
+  color: var(--text-main);
+}
+
+/* 动效 */
+@keyframes breath {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(255, 71, 87, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+  }
+}
+@keyframes num-flash {
+  0% {
+    color: var(--accent);
+    text-shadow: 0 0 12px rgba(0, 212, 255, 0.9);
+  }
+  100% {
+    color: var(--text-main);
+    text-shadow: none;
+  }
+}
+.breath {
+  animation: breath 2.4s ease-in-out infinite;
+}
+.pulse-dot {
+  animation: pulse 1.6s infinite;
+}
+.num-change {
+  animation: num-flash 0.6s ease-out;
+}
