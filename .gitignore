@@ -23,3 +23,7 @@ data/
 # 系统文件
 Thumbs.db
 .DS_Store
+
+# 工具产物
+.superpowers/
+--full-page
