@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 车辆点位检索：附近半径检索 + 视野 BoundingBox 查询。
@@ -65,18 +66,52 @@ public class NearbyController {
         return ApiResult.ok(bikes);
     }
 
-    /** 视野内点位：GEOSEARCH 圆检索 + bbox 矩形过滤，返回带状态字段 */
+    /** 视野内点位：只回传 bike:status 中有记录的车辆（当前运行正在上报的车辆）。
+     * 车辆位置按状态成员批量取 GEO 坐标——不走 GEOSEARCH 的距离截断，避免历史残留位置多时
+     * 只截出“以视野中心为圆心”的一团点。status hash 整体缺失时降级为 GEOSEARCH + unknown。 */
     @Operation(summary = "视野内点位", description = "BoundingBox 点位 + 车辆状态（riding/idle/unknown）")
     @GetMapping("/points/bbox")
     public ApiResult<List<NearbyBike>> bbox(@RequestParam double minLng, @RequestParam double minLat,
                                             @RequestParam double maxLng, @RequestParam double maxLat) {
+        long now = System.currentTimeMillis();
+        Map<String, String> statusHash = redis.<String, String>opsForHash().entries(StatsService.STATUS_KEY);
+        if (statusHash.isEmpty()) {
+            return ApiResult.ok(bboxFallback(minLng, minLat, maxLng, maxLat));
+        }
+        List<String> ids = new ArrayList<>(statusHash.keySet());
+        List<Point> positions = redis.opsForGeo().position(GEO_KEY, ids.toArray(new String[0]));
+        return ApiResult.ok(toNearbyBikes(ids, positions, statusHash,
+                minLng, minLat, maxLng, maxLat, now));
+    }
+
+    /** 坐标 + 状态 → 视野内点位（纯函数，便于单测）：GEOPOS 结果顺序与 ids 一一对应 */
+    static List<NearbyBike> toNearbyBikes(List<String> ids, List<Point> positions,
+                                          Map<String, String> statusHash,
+                                          double minLng, double minLat, double maxLng, double maxLat,
+                                          long now) {
+        List<NearbyBike> bikes = new ArrayList<>();
+        if (positions == null) {
+            return bikes;
+        }
+        for (int i = 0; i < ids.size() && i < positions.size(); i++) {
+            Point p = positions.get(i);
+            if (p == null || p.getX() < minLng || p.getX() > maxLng
+                    || p.getY() < minLat || p.getY() > maxLat) {
+                continue;
+            }
+            String bikeId = ids.get(i);
+            bikes.add(new NearbyBike(bikeId, 0, p.getX(), p.getY(),
+                    StatsCalculator.statusOf(BikeStatusCodec.decode(statusHash.get(bikeId)), now)));
+        }
+        return bikes;
+    }
+
+    /** 降级路径：bike:status 未就绪时按 GEOSEARCH 视野检索，状态统一 unknown（不白屏） */
+    private List<NearbyBike> bboxFallback(double minLng, double minLat, double maxLng, double maxLat) {
         double centerLng = (minLng + maxLng) / 2;
         double centerLat = (minLat + maxLat) / 2;
         // 包住 bbox 的检索半径（米）：对角线一半 × 纬度换算
         double diagM = Math.hypot((maxLng - minLng) * 85_000, (maxLat - minLat) * 111_000);
-        // 注意：limit 过小会造成"以视野中心为圆心的点云"——GEOSEARCH 由中心向外发散，
-        // 截断后只剩中心附近的点。视野内点位必须全量返回（BBOX 查询上限放宽到 2 万）；
-        // /nearby 的最近 N 辆语义不受影响
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
                 GEO_KEY,
                 GeoReference.fromCoordinate(new Point(centerLng, centerLat)),
@@ -85,7 +120,6 @@ public class NearbyController {
                         .includeCoordinates().limit(20_000));
         List<NearbyBike> bikes = new ArrayList<>();
         if (results != null) {
-            long now = System.currentTimeMillis();
             for (GeoResult<RedisGeoCommands.GeoLocation<String>> r : results) {
                 Point coord = r.getContent().getPoint();
                 if (coord.getX() >= minLng && coord.getX() <= maxLng
@@ -93,25 +127,7 @@ public class NearbyController {
                     bikes.add(new NearbyBike(r.getContent().getName(), 0, coord.getX(), coord.getY(), "unknown"));
                 }
             }
-            fillStatus(bikes, now);
         }
-        return ApiResult.ok(bikes);
-    }
-
-    /** 批量填充状态：HMGET bike:status 后按 5 分钟在线口径推导；hash 缺失保持 unknown */
-    private void fillStatus(List<NearbyBike> bikes, long now) {
-        if (bikes.isEmpty()) {
-            return;
-        }
-        List<String> ids = new ArrayList<>(bikes.size());
-        for (NearbyBike b : bikes) {
-            ids.add(b.getBikeId());
-        }
-        List<Object> values = redis.<String, Object>opsForHash().multiGet(StatsService.STATUS_KEY, ids);
-        for (int i = 0; i < bikes.size(); i++) {
-            Object v = values != null ? values.get(i) : null;
-            BikeStatusCodec.StatusEntry s = v != null ? BikeStatusCodec.decode(v.toString()) : null;
-            bikes.get(i).setStatus(StatsCalculator.statusOf(s, now));
-        }
+        return bikes;
     }
 }
