@@ -115,11 +115,14 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.10.1</version>
+                    <!-- 3.13.0+：JDK 23 起 javac 默认跳过注解处理，插件会显式补 -proc:full，避免 Lombok 静默失效 -->
+                    <version>3.13.0</version>
                     <configuration>
                         <source>1.8</source>
                         <target>1.8</target>
                         <encoding>UTF-8</encoding>
+                        <!-- JDK 23+ 默认不跑注解处理，显式开启以免 Lombok 静默失效 -->
+                        <proc>full</proc>
                     </configuration>
                 </plugin>
                 <plugin>
