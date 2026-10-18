@@ -2,6 +2,7 @@ package com.bike.monitor.server.controller;
 
 import com.bike.monitor.server.common.ApiResult;
 import com.bike.monitor.server.dto.NearbyBike;
+import com.bike.monitor.server.service.FenceStatsService;
 import com.bike.monitor.server.service.StatsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.geo.Point;
@@ -10,12 +11,15 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -40,11 +44,13 @@ class NearbyControllerTest {
         status.put("b2", "0,通州," + TS);       // 骑行中
 
         List<NearbyBike> bikes = NearbyController.toNearbyBikes(
-                ids, positions, status, 116.30, 39.80, 116.50, 39.95, NOW);
+                ids, positions, status, new HashSet<>(Collections.singletonList("b1")),
+                116.30, 39.80, 116.50, 39.95, NOW);
 
         assertEquals(1, bikes.size());
         assertEquals("b1", bikes.get(0).getBikeId());
         assertEquals("idle", bikes.get(0).getStatus());
+        assertTrue(bikes.get(0).isInFence());
     }
 
     @Test
@@ -56,11 +62,13 @@ class NearbyControllerTest {
         status.put("b2", "1,中心城区," + TS);
 
         List<NearbyBike> bikes = NearbyController.toNearbyBikes(
-                ids, positions, status, 116.30, 39.80, 116.50, 39.95, NOW);
+                ids, positions, status, Collections.emptySet(),
+                116.30, 39.80, 116.50, 39.95, NOW);
 
         assertEquals(1, bikes.size());
         assertEquals("b2", bikes.get(0).getBikeId());
         assertEquals("idle", bikes.get(0).getStatus());
+        assertFalse(bikes.get(0).isInFence());
     }
 
     @Test
@@ -81,6 +89,8 @@ class NearbyControllerTest {
         when(redis.<String, String>opsForHash()).thenReturn(hash);
         when(redis.opsForGeo()).thenReturn(geo);
         when(hash.entries(StatsService.STATUS_KEY)).thenReturn(status);
-        return new NearbyController(redis);
+        FenceStatsService fenceStatsService = mock(FenceStatsService.class);
+        when(fenceStatsService.insideFenceIds()).thenReturn(Collections.emptySet());
+        return new NearbyController(redis, fenceStatsService);
     }
 }

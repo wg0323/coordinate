@@ -3,6 +3,7 @@ package com.bike.monitor.server.controller;
 import com.bike.monitor.server.common.ApiResult;
 import com.bike.monitor.server.dto.NearbyBike;
 import com.bike.monitor.server.service.BikeStatusCodec;
+import com.bike.monitor.server.service.FenceStatsService;
 import com.bike.monitor.server.service.StatsCalculator;
 import com.bike.monitor.server.service.StatsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 车辆点位检索：附近半径检索 + 视野 BoundingBox 查询。
@@ -37,9 +39,11 @@ public class NearbyController {
     private static final int MAX_POINTS = 2000;
 
     private final StringRedisTemplate redis;
+    private final FenceStatsService fenceStatsService;
 
-    public NearbyController(StringRedisTemplate redis) {
+    public NearbyController(StringRedisTemplate redis, FenceStatsService fenceStatsService) {
         this.redis = redis;
+        this.fenceStatsService = fenceStatsService;
     }
 
     /** 附近的车：GEOSEARCH 半径检索，按距离升序 */
@@ -60,7 +64,7 @@ public class NearbyController {
                 RedisGeoCommands.GeoLocation<String> loc = r.getContent();
                 Point coord = loc.getPoint();
                 bikes.add(new NearbyBike(loc.getName(), r.getDistance().getValue() * 1000,
-                        coord.getX(), coord.getY(), "unknown"));
+                        coord.getX(), coord.getY(), "unknown", false));
             }
         }
         return ApiResult.ok(bikes);
@@ -80,13 +84,13 @@ public class NearbyController {
         }
         List<String> ids = new ArrayList<>(statusHash.keySet());
         List<Point> positions = redis.opsForGeo().position(GEO_KEY, ids.toArray(new String[0]));
-        return ApiResult.ok(toNearbyBikes(ids, positions, statusHash,
+        return ApiResult.ok(toNearbyBikes(ids, positions, statusHash, fenceStatsService.insideFenceIds(),
                 minLng, minLat, maxLng, maxLat, now));
     }
 
     /** 坐标 + 状态 → 视野内点位（纯函数，便于单测）：GEOPOS 结果顺序与 ids 一一对应 */
     static List<NearbyBike> toNearbyBikes(List<String> ids, List<Point> positions,
-                                          Map<String, String> statusHash,
+                                          Map<String, String> statusHash, Set<String> insideFenceIds,
                                           double minLng, double minLat, double maxLng, double maxLat,
                                           long now) {
         List<NearbyBike> bikes = new ArrayList<>();
@@ -101,7 +105,8 @@ public class NearbyController {
             }
             String bikeId = ids.get(i);
             bikes.add(new NearbyBike(bikeId, 0, p.getX(), p.getY(),
-                    StatsCalculator.statusOf(BikeStatusCodec.decode(statusHash.get(bikeId)), now)));
+                    StatsCalculator.statusOf(BikeStatusCodec.decode(statusHash.get(bikeId)), now),
+                    insideFenceIds.contains(bikeId)));
         }
         return bikes;
     }
@@ -124,7 +129,7 @@ public class NearbyController {
                 Point coord = r.getContent().getPoint();
                 if (coord.getX() >= minLng && coord.getX() <= maxLng
                         && coord.getY() >= minLat && coord.getY() <= maxLat) {
-                    bikes.add(new NearbyBike(r.getContent().getName(), 0, coord.getX(), coord.getY(), "unknown"));
+                    bikes.add(new NearbyBike(r.getContent().getName(), 0, coord.getX(), coord.getY(), "unknown", false));
                 }
             }
         }

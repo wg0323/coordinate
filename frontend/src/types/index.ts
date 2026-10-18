@@ -13,6 +13,8 @@ export interface NearbyBike {
   lat: number
   /** riding | idle | unknown */
   status?: string
+  /** 是否位于任一电子围栏内（/points/bbox 标注；字段缺失视为未知） */
+  inFence?: boolean
 }
 
 export interface SimilarityResult {

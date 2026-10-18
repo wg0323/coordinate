@@ -12,6 +12,11 @@
         <input type="checkbox" v-model="toggles[t.key as keyof typeof toggles]" />
         {{ t.label }}
       </label>
+      <div class="legend">
+        <span><i class="lg-dot" style="background: #a8b3c1"></i>围栏内停放</span>
+        <span><i class="lg-dot" style="background: #ffa502"></i>围栏外停放</span>
+        <span><i class="lg-dot" style="background: #00ff88"></i>骑行中</span>
+      </div>
     </div>
 
     <!-- 悬浮核心数字条 -->
@@ -27,6 +32,10 @@
       <div class="fk">
         <span class="fk-label">今日订单</span>
         <span class="num fk-value">{{ fmtNum(TODAY_ORDERS) }}</span>
+      </div>
+      <div class="fk">
+        <span class="fk-label">围栏外停车</span>
+        <span class="num fk-value">{{ fmtNum(fenceStats?.parkedOutside) }}</span>
       </div>
     </div>
   </div>
@@ -142,6 +151,26 @@ onUnmounted(() => {
 .layer-ctrl label {
   cursor: pointer;
   user-select: none;
+}
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(127, 155, 189, 0.25);
+  font-size: 11px;
+}
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lg-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 .float-kpis {
   position: absolute;

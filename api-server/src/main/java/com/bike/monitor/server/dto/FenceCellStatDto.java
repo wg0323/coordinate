@@ -22,7 +22,7 @@ public class FenceCellStatDto {
     @Schema(description = "容量（未设容量为 null）")
     private Integer capacity;
 
-    @Schema(description = "当前围栏内车辆数")
+    @Schema(description = "当前围栏内停放车辆数（仅在线已锁车）")
     private int count;
 
     @Schema(description = "装载率 count/capacity（未设容量为 0）")

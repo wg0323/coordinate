@@ -26,4 +26,7 @@ public class NearbyBike {
     /** 车辆状态：riding=骑行中 idle=空闲 unknown=无状态数据（/nearby 恒为 unknown） */
     @Schema(description = "车辆状态 riding|idle|unknown；/nearby 恒为 unknown")
     private String status;
+    /** 是否位于任一电子围栏内（/points/bbox 按围栏统计快照标注，其余接口恒为 false） */
+    @Schema(description = "是否位于电子围栏内")
+    private boolean inFence;
 }

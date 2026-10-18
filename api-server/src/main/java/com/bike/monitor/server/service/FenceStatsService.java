@@ -20,12 +20,17 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * 围栏装载统计：30s 定时任务全量计算围栏内车辆数（STRtree 粗筛 + JTS covers 精筛），
- * 结果存内存缓存供 /api/fence/stats 读取。
+ * 围栏装载统计：30s 定时任务全量计算围栏内停放车辆数（STRtree 粗筛 + JTS covers 精筛），
+ * 结果存内存缓存供 /api/fence/stats 读取，同时缓存被围栏覆盖的车辆集供 /points/bbox 标注 inFence。
+ * 停放口径：bike:status 中在线且已锁车（idle）才计入，骑行中路过围栏不计。
  * 容量来自名称前缀 [停放N]；未设容量（[禁停]/无前缀/容量 0）不参与装载率统计。
  */
 @Slf4j
@@ -58,6 +63,9 @@ public class FenceStatsService {
 
     private volatile FenceStatsDto cache;
 
+    /** 最近一次计算中被任一围栏覆盖的车辆 ID（不可变快照，供 /points/bbox 标注 inFence） */
+    private volatile Set<String> insideFenceIds = Collections.emptySet();
+
     /** 30s 全量重算 */
     @Scheduled(fixedDelay = 30_000, initialDelay = 15_000)
     public void compute() {
@@ -74,6 +82,11 @@ public class FenceStatsService {
             compute();
         }
         return cache;
+    }
+
+    /** 被任一围栏覆盖的车辆 ID 快照（定时计算产物；首次计算完成前为空集） */
+    public Set<String> insideFenceIds() {
+        return insideFenceIds;
     }
 
     @SuppressWarnings("unchecked")
@@ -109,26 +122,51 @@ public class FenceStatsService {
         }
         tree.build();
 
+        // 停放口径：在线（5 分钟内有上报）且已锁车的车辆
+        long now = System.currentTimeMillis();
+        Map<String, String> statusHash = redis.<String, String>opsForHash().entries(StatsService.STATUS_KEY);
+        Set<String> parkedIds = new HashSet<>(statusHash.size() * 2);
+        for (Map.Entry<String, String> e : statusHash.entrySet()) {
+            if ("idle".equals(StatsCalculator.statusOf(BikeStatusCodec.decode(e.getValue()), now))) {
+                parkedIds.add(e.getKey());
+            }
+        }
+
         // 车辆全量位置（北京 300km 大圆覆盖全库成员）
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
                 GEO_KEY,
                 GeoReference.fromCoordinate(new org.springframework.data.geo.Point(116.4, 40.1)),
                 new Distance(300, Metrics.KILOMETERS),
                 RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeCoordinates().limit(300_000));
+        Set<String> coveredIds = new HashSet<>();
+        Set<String> parkedCoveredIds = new HashSet<>();
         if (results != null) {
             for (GeoResult<RedisGeoCommands.GeoLocation<String>> r : results) {
+                String bikeId = r.getContent().getName();
+                boolean parked = parkedIds.contains(bikeId);
                 org.springframework.data.geo.Point p = r.getContent().getPoint();
                 org.locationtech.jts.geom.Point jtsPoint =
                         FACTORY.createPoint(new Coordinate(p.getX(), p.getY()));
+                boolean covered = false;
                 for (Object o : tree.query(jtsPoint.getEnvelopeInternal())) {
                     int idx = (Integer) o;
                     FenceRecord record = records.get(idx);
                     if (record.polygon.covers(jtsPoint)) {
-                        record.count++;
+                        covered = true;
+                        if (parked) {
+                            record.count++;
+                        }
+                    }
+                }
+                if (covered) {
+                    coveredIds.add(bikeId);
+                    if (parked) {
+                        parkedCoveredIds.add(bikeId);
                     }
                 }
             }
         }
+        insideFenceIds = Collections.unmodifiableSet(coveredIds);
 
         // 状态汇总
         long normal = 0, nearFull = 0, overflow = 0, empty = 0, noCapacity = 0;
@@ -162,6 +200,8 @@ public class FenceStatsService {
         }
         overflowed.sort(Comparator.comparingDouble(FenceCellStatDto::getLoadRate).reversed());
         double avgLoadRate = loadCount > 0 ? loadSum / loadCount : 0.0;
-        return new FenceStatsDto(records.size(), normal, nearFull, overflow, empty, noCapacity, avgLoadRate, overflowed, cells);
+        long parkedOutside = Math.max(0, parkedIds.size() - parkedCoveredIds.size());
+        return new FenceStatsDto(records.size(), normal, nearFull, overflow, empty, noCapacity,
+                avgLoadRate, parkedOutside, overflowed, cells);
     }
 }

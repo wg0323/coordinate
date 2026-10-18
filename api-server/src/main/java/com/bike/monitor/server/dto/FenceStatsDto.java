@@ -37,6 +37,9 @@ public class FenceStatsDto {
     @Schema(description = "平均装载率（仅有容量的围栏参与，0~1+）")
     private double avgLoadRate;
 
+    @Schema(description = "围栏外停车数（在线已锁车但不在任何围栏内）")
+    private long parkedOutside;
+
     @Schema(description = "溢出围栏列表（按装载率降序）")
     private List<FenceCellStatDto> overflowed;
 

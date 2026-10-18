@@ -24,6 +24,8 @@ export interface FenceStatsDto {
   empty: number
   noCapacity: number
   avgLoadRate: number
+  /** 围栏外停车数（在线已锁车但不在任何围栏内） */
+  parkedOutside: number
   overflowed: FenceCellStatDto[]
   /** JSON 序列化后 key 为字符串型 fenceId */
   cells: Record<string, FenceCellStatDto>

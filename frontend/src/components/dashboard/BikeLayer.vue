@@ -8,16 +8,43 @@ import type { NearbyBike } from '../../types'
 
 const props = defineProps<{ bikes: NearbyBike[] }>()
 
-// 状态着色：绿=空闲可租，蓝灰=骑行中，蓝=无状态数据
-const STATUS_COLOR: Record<string, { color: string; fill: string; label: string }> = {
-  idle: { color: '#00875a', fill: '#00ff88', label: '空闲' },
-  riding: { color: '#77808c', fill: '#9aa5b1', label: '骑行中' },
-  unknown: { color: '#0d47a1', fill: '#1565c0', label: '状态未知' }
+// 状态着色（大屏深色滤镜下仍能区分）：围栏内停放=灰，围栏外停放=橘，骑行中=绿
+// 车辆点整体缩小，避免密集区域盖住围栏与路网
+const PARKED_IN_FENCE: BikeMeta = { color: '#5f6b7a', fill: '#a8b3c1', label: '围栏内停放', radius: 4, fillOpacity: 1 }
+const PARKED_OUTSIDE: BikeMeta = { color: '#b37000', fill: '#ffa502', label: '围栏外停放', radius: 3, fillOpacity: 0.8 }
+const RIDING: BikeMeta = { color: '#00875a', fill: '#00ff88', label: '骑行中', radius: 3.5, fillOpacity: 0.95 }
+const UNKNOWN: BikeMeta = { color: '#0d47a1', fill: '#1565c0', label: '状态未知', radius: 3.5, fillOpacity: 0.85 }
+/** 旧后端未回传 inFence 时的降级样式 */
+const IDLE: BikeMeta = { color: '#5f6b7a', fill: '#a8b3c1', label: '空闲', radius: 4, fillOpacity: 1 }
+
+interface BikeMeta {
+  color: string
+  fill: string
+  label: string
+  radius: number
+  fillOpacity: number
+}
+
+function metaOf(b: NearbyBike): BikeMeta {
+  const status = b.status ?? 'unknown'
+  if (status === 'riding') {
+    return RIDING
+  }
+  if (status === 'idle') {
+    if (b.inFence === false) {
+      return PARKED_OUTSIDE
+    }
+    if (b.inFence === true) {
+      return PARKED_IN_FENCE
+    }
+    return IDLE
+  }
+  return UNKNOWN
 }
 
 interface BikeMarker {
   marker: L.CircleMarker
-  status: string
+  meta: BikeMeta
 }
 
 let group: L.LayerGroup | null = null
@@ -34,28 +61,32 @@ function sync(bikes: NearbyBike[]): void {
   const seen = new Set<string>()
   for (const b of bikes) {
     seen.add(b.bikeId)
-    const status = b.status ?? 'unknown'
-    const meta = STATUS_COLOR[status] ?? STATUS_COLOR.unknown
+    const meta = metaOf(b)
     const item = markers.get(b.bikeId)
     if (item) {
       item.marker.setLatLng([b.lat, b.lng])
-      if (item.status !== status) {
-        item.marker.setStyle({ color: meta.color, fillColor: meta.fill })
+      if (item.meta !== meta) {
+        item.marker.setStyle({
+          color: meta.color,
+          fillColor: meta.fill,
+          radius: meta.radius,
+          fillOpacity: meta.fillOpacity
+        })
         item.marker.setTooltipContent(`${b.bikeId}（${meta.label}）`)
-        item.status = status
+        item.meta = meta
       }
     } else {
       const marker = L.circleMarker([b.lat, b.lng], {
         renderer,
-        radius: 5,
+        radius: meta.radius,
         color: meta.color,
         fillColor: meta.fill,
-        fillOpacity: 0.9,
+        fillOpacity: meta.fillOpacity,
         weight: 1
       })
         .bindTooltip(`${b.bikeId}（${meta.label}）`)
         .addTo(group)
-      markers.set(b.bikeId, { marker, status })
+      markers.set(b.bikeId, { marker, meta })
     }
   }
   for (const [id, item] of markers) {
