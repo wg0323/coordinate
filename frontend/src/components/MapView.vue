@@ -44,8 +44,8 @@ onBeforeUnmount(() => {
   height: 100%;
   width: 100%;
 }
-/* 深色大屏：反转亮度 + 色相旋转，输出近似暗夜蓝底图 */
-.map-dark {
+/* 深色大屏：仅对底图瓦片反转亮度 + 色相旋转，覆盖物（散点/围栏/热力）保持真实颜色 */
+.map-dark :deep(.leaflet-tile-pane) {
   filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.1);
 }
 </style>

@@ -34,13 +34,6 @@ export interface FenceDto {
   coordinates: [number, number][]
 }
 
-export interface HeatCellDto {
-  h3Index: string
-  windowStart: number
-  count: number
-  boundary: [number, number][]
-}
-
 export interface FenceAlert {
   fenceId: number
   fenceName: string

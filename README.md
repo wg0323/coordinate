@@ -35,7 +35,7 @@
 - [x] 电子围栏：广播围栏 + STRtree 粗筛 + JTS covers 精筛 + 事件时间定时器防抖（FenceJob）
 - [x] 热力聚合：H3 res8 + 1min 滚动窗口 distinct 车辆数（H3AggJob）
 - [x] 后端：REST 9 组接口 + SSE 实时告警推送 + 告警 MongoDB 归档
-- [x] 前端监控大屏：中心辐射型深色大屏（顶栏/左右面板/中央地图/底部数据带），车辆状态着色（绿=空闲/灰=骑行中）+ zoom 联动蜂窝聚合 + 围栏装载状态着色 + ECharts 图表 + SSE 实时告警
+- [x] 前端监控大屏：中心辐射型深色大屏（顶栏/左右面板/中央地图/底部数据带），车辆状态着色（绿=空闲/灰=骑行中）+ zoom 联动车辆热力云 + 围栏装载状态着色 + ECharts 图表 + SSE 实时告警
 - [x] 真实围栏数据：2017 年监管平台 b_fence 数据 9093 条经清洗后入库 6917 条（GCJ-02 → WGS84）
 - [x] 轨迹存储冷热分离：Redis GEO（热）+ TDengine（冷，KEEP 90d）+ MongoDB（属性/围栏/告警）
 
@@ -53,7 +53,7 @@
         ▼
 [api-server Spring Boot]  REST 9 组接口 + 告警归档(MongoDB) + SSE 实时推送
         ▼
-[frontend Vue3+TS+Vite]   监控大屏：深色天地图 + 车辆状态散点(Canvas) + 围栏状态着色 + H3 热力 + ECharts 面板 + SSE 告警
+[frontend Vue3+TS+Vite]   监控大屏：深色天地图 + 车辆状态散点(Canvas) + 围栏状态着色 + 车辆热力云 + ECharts 面板 + SSE 告警
 ```
 
 ## 技术栈
@@ -174,12 +174,12 @@ cd frontend && npm install && npm run dev     # → http://localhost:5173
 | 题 3 相似度 | `GET /api/similarity?bikeA=..&bikeB=..`（配合模拟器伴随车辆场景=套牌车） |
 | 题 4 坐标系 | `GET /api/coord/convert?lng=..&lat=..` 同点三系对比 |
 | 题 5 存储 | Redis `bike:latest`（热）/ TDengine `gps_trace`（冷, KEEP 90d）/ MongoDB（属性） |
-| 题 6 GeoHash | `coordinate-common/GeoHash.java` 九宫格实现；页面热力图（H3 六边形叠加，默认关闭、勾选开启） |
+| 题 6 GeoHash | `coordinate-common/GeoHash.java` 九宫格实现；页面热力云（leaflet.heat 核密度，默认关闭、勾选开启，zoom<11 自动显示） |
 | 题 7 选型 | 四种存储各司其职，「系统架构」图即答案 |
 | 题 8 射线法 | `RayCastingTest`：凹多边形/边界/顶点 20 用例，与 JTS covers 对照 |
 | 题 9 10 万围栏 | `FenceIndexBenchmark`：STRtree 5.5µs/点 vs 全量 254µs，加速 46 倍 |
 | 题 10 Flink 报警 | 页面画围栏 → SSE 实时弹 ENTER/EXIT → Mongo alerts 归档 |
-| 题 11 系统设计 | 全链路：双触发上报→削峰→H3 聚合→热力图→bbox 点位接口 |
+| 题 11 系统设计 | 全链路：双触发上报→削峰→H3 聚合/实时点位→热力云→bbox 点位接口 |
 
 ## 部署指南
 

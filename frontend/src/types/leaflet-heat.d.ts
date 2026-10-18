@@ -4,8 +4,24 @@ import 'leaflet'
 declare module 'leaflet.heat'
 
 declare module 'leaflet' {
+  interface HeatLayerOptions {
+    minOpacity?: number
+    maxZoom?: number
+    max?: number
+    radius?: number
+    blur?: number
+    gradient?: Record<number, string>
+    pane?: string
+  }
+
+  interface HeatLayer extends Layer {
+    setLatLngs(latlngs: Array<[number, number, number?]>): this
+    setOptions(options: HeatLayerOptions): this
+    redraw(): this
+  }
+
   function heatLayer(
     latlngs: Array<[number, number, number?]>,
-    options?: Record<string, unknown>
-  ): L.Layer
+    options?: HeatLayerOptions
+  ): HeatLayer
 }

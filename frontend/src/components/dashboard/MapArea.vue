@@ -1,7 +1,7 @@
 <template>
   <div class="map-area">
     <MapView dark />
-    <HeatLayer v-model:enabled="heatAuto" :cells="heatCells" />
+    <HeatLayer v-model:enabled="heatAuto" :bikes="bikes" />
     <BikeLayer v-if="bikesVisible" :bikes="bikes" />
     <FenceStatusLayer v-if="toggles.fences" :stats="fenceStats" />
     <OpsLayer v-if="toggles.ops" />
@@ -16,6 +16,11 @@
         <span><i class="lg-dot" style="background: #a8b3c1"></i>围栏内停放</span>
         <span><i class="lg-dot" style="background: #ffa502"></i>围栏外停放</span>
         <span><i class="lg-dot" style="background: #00ff88"></i>骑行中</span>
+      </div>
+      <div v-if="heatAuto" class="heat-legend">
+        <span class="hl-title">在线车辆密度</span>
+        <i class="hl-bar" :style="{ background: HEAT_LEGEND_CSS }"></i>
+        <span class="hl-scale"><em>稀疏</em><em>中等</em><em>稠密</em></span>
       </div>
     </div>
 
@@ -49,12 +54,12 @@ import BikeLayer from './BikeLayer.vue'
 import OpsLayer from './OpsLayer.vue'
 import FenceStatusLayer from './FenceStatusLayer.vue'
 import { fetchBBox } from '../../api/nearby'
-import { fetchHeat } from '../../api/heat'
 import { getMap, getMapAsync } from '../../mapStore'
 import { usePolling } from '../../composables/usePolling'
 import { fmtNum } from '../../utils/format'
+import { HEAT_LEGEND_CSS } from '../../utils/heat'
 import { TODAY_ORDERS } from '../../mock/dashboard'
-import type { NearbyBike, HeatCellDto } from '../../types'
+import type { NearbyBike } from '../../types'
 import type { FenceStatsDto, StatsDto } from '../../types/stats'
 
 const props = defineProps<{ stats: StatsDto | null; fenceStats: FenceStatsDto | null }>()
@@ -62,7 +67,7 @@ const props = defineProps<{ stats: StatsDto | null; fenceStats: FenceStatsDto | 
 const TOGGLES = [
   { key: 'bikes', label: '车辆分布' },
   { key: 'fences', label: '电子围栏' },
-  { key: 'heat', label: '热力聚合' },
+  { key: 'heat', label: '车辆热力' },
   { key: 'ops', label: '运维车辆' }
 ] as const
 
@@ -74,11 +79,10 @@ const toggles = ref<{ bikes: boolean; fences: boolean; heat: boolean; ops: boole
 })
 
 const bikes = ref<NearbyBike[]>([])
-const heatCells = ref<HeatCellDto[]>([])
 const zoom = ref(12)
 
-// zoom 联动：<11 时热力蜂窝即聚合视图，散点隐藏
-const bikesVisible = computed(() => toggles.value.bikes && zoom.value >= 11)
+// zoom 联动：<11 时热力云即聚合视图，散点隐藏；热力与散点互斥，避免散点盖住热力梯度
+const bikesVisible = computed(() => toggles.value.bikes && zoom.value >= 11 && !toggles.value.heat)
 const heatAuto = computed(() => toggles.value.heat || zoom.value < 11)
 
 async function pollBikes() {
@@ -101,16 +105,7 @@ function onMoveEnd() {
 }
 const onZoomEnd = () => (zoom.value = getMap().getZoom())
 
-async function pollHeat() {
-  try {
-    heatCells.value = await fetchHeat()
-  } catch {
-    /* 保留上次数据 */
-  }
-}
-
 usePolling(pollBikes, 15_000)
-usePolling(pollHeat, 30_000)
 
 onMounted(async () => {
   const map = await getMapAsync()
@@ -165,6 +160,29 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.heat-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 128px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(127, 155, 189, 0.25);
+  font-size: 11px;
+}
+.hl-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 2px;
+}
+.hl-scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+}
+.hl-scale em {
+  font-style: normal;
 }
 .lg-dot {
   display: inline-block;

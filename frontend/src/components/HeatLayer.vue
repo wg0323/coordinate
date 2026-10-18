@@ -3,63 +3,80 @@
 <script setup lang="ts">
 import { onUnmounted, watch } from 'vue'
 import L from 'leaflet'
-import { getMap } from '../mapStore'
-import type { HeatCellDto } from '../types'
+import 'leaflet.heat'
+import { getMapAsync } from '../mapStore'
+import { HEAT_BLUR, HEAT_GRADIENT, HEAT_MAX, HEAT_RADIUS } from '../utils/heat'
+import type { NearbyBike } from '../types'
 
-const props = defineProps<{ cells: HeatCellDto[] }>()
+const props = defineProps<{ bikes: NearbyBike[] }>()
 const enabled = defineModel<boolean>('enabled', { default: true })
 
-// Canvas 渲染器：千级六边形时比 SVG DOM 性能友好
-let renderer: L.Canvas | null = null
-let group: L.LayerGroup | null = null
+/** 低缩放时全城车辆挤在少数像素上，缩小半径并单独设定饱和阈值，避免整片糊成红色 */
+const FAR_RADIUS = 12
+const FAR_BLUR = 10
+const FAR_MAX = 0.25
 
-// count 占比 → 颜色（绿 → 黄 → 红）
-function colorFor(ratio: number): string {
-  return `hsl(${120 - ratio * 120}, 80%, 50%)`
+let map: L.Map | null = null
+let heat: L.HeatLayer | null = null
+let disposed = false
+
+/** 热力数据：车辆实时坐标，每辆车权重 1 */
+function toPoints(bikes: NearbyBike[]): Array<[number, number]> {
+  return bikes.map(b => [b.lat, b.lng])
 }
 
-// cells 变化重绘；enabled 关闭时也要移除已有图层
+function tuneForZoom(): void {
+  if (!heat || !map) {
+    return
+  }
+  const far = map.getZoom() <= 10
+  heat.setOptions({
+    radius: far ? FAR_RADIUS : HEAT_RADIUS,
+    blur: far ? FAR_BLUR : HEAT_BLUR,
+    max: far ? FAR_MAX : HEAT_MAX
+  })
+}
+
+function detach(): void {
+  heat?.remove()
+  heat = null
+  map?.off('zoomend', tuneForZoom)
+}
+
+// 数据或开关变化时更新：保留实例做增量重绘，避免整层移除重建造成闪断
 watch(
-  [() => props.cells, () => enabled.value],
-  ([cells]) => {
-    const map = getMap()
-    if (group) {
-      map.removeLayer(group)
-      group = null
+  [() => props.bikes, () => enabled.value],
+  async ([bikes]) => {
+    if (!map) {
+      map = await getMapAsync()
     }
-    if (!enabled.value || cells.length === 0) {
+    if (disposed) {
       return
     }
-    if (!renderer) {
-      renderer = L.canvas({ padding: 0.5 })
+    if (!enabled.value || bikes.length === 0) {
+      detach()
+      return
     }
-    group = L.layerGroup()
-    const maxCount = Math.max(...cells.map(c => c.count), 1)
-    for (const c of cells) {
-      const ratio = c.count / maxCount
-      // boundary 为 [lng, lat] 数组，直接还原真实 H3 六边形边界
-      L.polygon(
-        c.boundary.map(([lng, lat]) => [lat, lng] as [number, number]),
-        {
-          renderer,
-          color: colorFor(ratio),
-          weight: 1,
-          fillColor: colorFor(ratio),
-          fillOpacity: 0.55
-        }
-      )
-        .bindTooltip(`${c.count} 辆 / 1min`)
-        .addTo(group)
+    if (!heat) {
+      heat = L.heatLayer(toPoints(bikes), {
+        // 固定色阶与饱和阈值：颜色只随真实密度变化，不随每批最大车数整体漂移
+        gradient: HEAT_GRADIENT,
+        max: HEAT_MAX,
+        radius: HEAT_RADIUS,
+        blur: HEAT_BLUR,
+        minOpacity: 0.002
+      }).addTo(map)
+      map.on('zoomend', tuneForZoom)
+      tuneForZoom()
+      return
     }
-    group.addTo(map)
+    heat.setLatLngs(toPoints(bikes))
   },
-  { deep: false }
+  { immediate: true }
 )
 
 onUnmounted(() => {
-  group?.remove()
-  group = null
-  renderer?.remove()
-  renderer = null
+  disposed = true
+  detach()
 })
 </script>
