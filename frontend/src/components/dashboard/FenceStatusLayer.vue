@@ -1,9 +1,9 @@
 <template><span></span></template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
-import { getMapAsync } from '../../mapStore'
+import { getMap, getMapAsync } from '../../mapStore'
 import { listFences } from '../../api/fence'
 import type { FenceDto } from '../../types'
 import type { FenceCellStatDto, FenceStatsDto } from '../../types/stats'
@@ -46,9 +46,15 @@ function statusOf(cell: FenceCellStatDto | undefined): string {
 }
 
 let group: L.LayerGroup | null = null
+/** Canvas 渲染器复用：每次 render 新建会在地图上堆积 canvas，长时间运行内存持续增长 */
+let renderer: L.Canvas | null = null
+let disposed = false
 
 async function render() {
   const map = await getMapAsync()
+  if (disposed) {
+    return
+  }
   if (group) {
     map.removeLayer(group)
     group = null
@@ -58,7 +64,9 @@ async function render() {
   }
   const b = map.getBounds()
   group = L.layerGroup()
-  const renderer = L.canvas({ padding: 0.5 })
+  if (!renderer) {
+    renderer = L.canvas({ padding: 0.5 })
+  }
   let drawn = 0
   for (const f of fences.value) {
     if (drawn >= MAX_RENDER) {
@@ -113,8 +121,21 @@ onMounted(async () => {
     /* 围栏列表拉取失败则不渲染该层 */
   }
   const map = await getMapAsync()
+  if (disposed) {
+    return
+  }
   map.on('moveend', render)
   await render()
+})
+
+// 图层开关用 v-if 控制，卸载时必须移除图层并解绑 moveend，否则取消勾选后仍会重绘
+onUnmounted(() => {
+  disposed = true
+  group?.remove()
+  group = null
+  renderer?.remove()
+  renderer = null
+  getMap().off('moveend', render)
 })
 
 watch(

@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MapView from '../MapView.vue'
 import HeatLayer from '../HeatLayer.vue'
 import BikeLayer from './BikeLayer.vue'
@@ -41,7 +41,7 @@ import OpsLayer from './OpsLayer.vue'
 import FenceStatusLayer from './FenceStatusLayer.vue'
 import { fetchBBox } from '../../api/nearby'
 import { fetchHeat } from '../../api/heat'
-import { getMapAsync } from '../../mapStore'
+import { getMap, getMapAsync } from '../../mapStore'
 import { usePolling } from '../../composables/usePolling'
 import { fmtNum } from '../../utils/format'
 import { TODAY_ORDERS } from '../../mock/dashboard'
@@ -82,6 +82,16 @@ async function pollBikes() {
   }
 }
 
+// 拖动/缩放停止 400ms 后再拉点位，避免连续 moveend 触发请求风暴（旧请求未返回又发新请求）
+let moveTimer: number | null = null
+function onMoveEnd() {
+  if (moveTimer) {
+    clearTimeout(moveTimer)
+  }
+  moveTimer = window.setTimeout(pollBikes, 400)
+}
+const onZoomEnd = () => (zoom.value = getMap().getZoom())
+
 async function pollHeat() {
   try {
     heatCells.value = await fetchHeat()
@@ -96,8 +106,17 @@ usePolling(pollHeat, 30_000)
 onMounted(async () => {
   const map = await getMapAsync()
   zoom.value = map.getZoom()
-  map.on('zoomend', () => (zoom.value = map.getZoom()))
-  map.on('moveend', pollBikes)
+  map.on('zoomend', onZoomEnd)
+  map.on('moveend', onMoveEnd)
+})
+
+onUnmounted(() => {
+  const map = getMap()
+  map.off('zoomend', onZoomEnd)
+  map.off('moveend', onMoveEnd)
+  if (moveTimer) {
+    clearTimeout(moveTimer)
+  }
 })
 </script>
 

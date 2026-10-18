@@ -33,6 +33,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onWinResize)
+  // 销毁地图实例：移除所有图层/瓦片/画布（HMR 或整页重建时避免旧实例滞留）
+  map?.remove()
+  map = null
 })
 </script>
 

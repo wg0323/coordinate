@@ -1,7 +1,7 @@
 <template><span></span></template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import { getMap } from '../mapStore'
 import type { HeatCellDto } from '../types'
@@ -18,9 +18,10 @@ function colorFor(ratio: number): string {
   return `hsl(${120 - ratio * 120}, 80%, 50%)`
 }
 
+// cells 变化重绘；enabled 关闭时也要移除已有图层
 watch(
-  () => props.cells,
-  cells => {
+  [() => props.cells, () => enabled.value],
+  ([cells]) => {
     const map = getMap()
     if (group) {
       map.removeLayer(group)
@@ -54,4 +55,11 @@ watch(
   },
   { deep: false }
 )
+
+onUnmounted(() => {
+  group?.remove()
+  group = null
+  renderer?.remove()
+  renderer = null
+})
 </script>

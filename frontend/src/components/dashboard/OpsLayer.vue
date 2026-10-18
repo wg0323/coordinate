@@ -1,15 +1,21 @@
 <template><span></span></template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import L from 'leaflet'
 import { getMapAsync } from '../../mapStore'
 import { OPS_VEHICLES } from '../../mock/dashboard'
 
 // 运维调度车辆静态占位层：卡车图标 + tooltip
+let group: L.LayerGroup | null = null
+let disposed = false
+
 onMounted(async () => {
   const map = await getMapAsync()
-  const group = L.layerGroup()
+  if (disposed) {
+    return
+  }
+  group = L.layerGroup()
   for (const v of OPS_VEHICLES) {
     L.marker([v.lat, v.lng], {
       icon: L.divIcon({
@@ -23,6 +29,13 @@ onMounted(async () => {
       .addTo(group)
   }
   group.addTo(map)
+})
+
+// 图层开关用 v-if 控制，卸载时必须移除，否则取消勾选后仍留在地图上
+onUnmounted(() => {
+  disposed = true
+  group?.remove()
+  group = null
 })
 </script>
 
