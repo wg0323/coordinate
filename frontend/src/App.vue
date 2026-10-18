@@ -1,7 +1,7 @@
 <template>
   <div class="screen">
     <header class="area-top">
-      <div class="panel topbar-placeholder">顶部标题栏</div>
+      <TopBar :stats="stats" />
     </header>
     <aside class="area-left">
       <KpiPanel :stats="stats" />
@@ -19,7 +19,7 @@
       <DispatchPanel />
     </aside>
     <footer class="area-bottom">
-      <div class="panel bottombar-placeholder">底部数据带</div>
+      <BottomBar />
     </footer>
   </div>
 </template>
@@ -35,6 +35,8 @@ import AlertPanel from './components/dashboard/AlertPanel.vue'
 import DistrictRankPanel from './components/dashboard/DistrictRankPanel.vue'
 import TrendPanel from './components/dashboard/TrendPanel.vue'
 import DispatchPanel from './components/dashboard/DispatchPanel.vue'
+import TopBar from './components/dashboard/TopBar.vue'
+import BottomBar from './components/dashboard/BottomBar.vue'
 import { fetchFenceStats, fetchStats } from './api/stats'
 import { usePolling } from './composables/usePolling'
 import type { FenceStatsDto, StatsDto } from './types/stats'
@@ -99,25 +101,10 @@ usePolling(pollFenceStats, 30_000)
 .area-bottom {
   grid-area: bottom;
 }
-.topbar-placeholder,
-.bottombar-placeholder {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-}
-/* 左右面板平分；占位面板由后续 Task 替换 */
+/* 左右面板平分 */
 .area-left > *,
 .area-right > * {
   flex: 1;
   min-height: 0;
-}
-.area-left .ph,
-.area-right .ph {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
 }
 </style>
