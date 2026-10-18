@@ -6,8 +6,8 @@
     <aside class="area-left">
       <KpiPanel :stats="stats" />
       <BikeStatusPanel :stats="stats" />
-      <div class="panel ph">围栏状态概览</div>
-      <div class="panel ph">实时订单流</div>
+      <FenceOverviewPanel :fence-stats="fenceStats" />
+      <OrderFeedPanel />
     </aside>
     <main class="area-center">
       <MapArea :stats="stats" :fence-stats="fenceStats" />
@@ -28,6 +28,8 @@
 import { ref } from 'vue'
 import KpiPanel from './components/dashboard/KpiPanel.vue'
 import BikeStatusPanel from './components/dashboard/BikeStatusPanel.vue'
+import FenceOverviewPanel from './components/dashboard/FenceOverviewPanel.vue'
+import OrderFeedPanel from './components/dashboard/OrderFeedPanel.vue'
 import MapArea from './components/dashboard/MapArea.vue'
 import { fetchFenceStats, fetchStats } from './api/stats'
 import { usePolling } from './composables/usePolling'
