@@ -35,7 +35,7 @@
 - [x] 电子围栏：广播围栏 + STRtree 粗筛 + JTS covers 精筛 + 事件时间定时器防抖（FenceJob）
 - [x] 热力聚合：H3 res8 + 1min 滚动窗口 distinct 车辆数（H3AggJob）
 - [x] 后端：REST 9 组接口 + SSE 实时告警推送 + 告警 MongoDB 归档
-- [x] 前端：天地图底图 + 轨迹回放（DP 抽稀）+ 海量围栏展示 + H3 六边形热力 + SSE 告警弹窗
+- [x] 前端监控大屏：中心辐射型深色大屏（顶栏/左右面板/中央地图/底部数据带），车辆状态着色（绿=空闲/灰=骑行中）+ zoom 联动蜂窝聚合 + 围栏装载状态着色 + ECharts 图表 + SSE 实时告警
 - [x] 真实围栏数据：2017 年监管平台 b_fence 数据 9093 条经清洗后入库 6917 条（GCJ-02 → WGS84）
 - [x] 轨迹存储冷热分离：Redis GEO（热）+ TDengine（冷，KEEP 90d）+ MongoDB（属性/围栏/告警）
 
@@ -53,7 +53,7 @@
         ▼
 [api-server Spring Boot]  REST 9 组接口 + 告警归档(MongoDB) + SSE 实时推送
         ▼
-[frontend Vue3+TS+Vite]   天地图底图 + 热力图(H3 六边形) + 轨迹回放 + 围栏绘制 + SSE 告警
+[frontend Vue3+TS+Vite]   监控大屏：深色天地图 + 车辆状态散点(Canvas) + 围栏状态着色 + H3 热力 + ECharts 面板 + SSE 告警
 ```
 
 ## 技术栈
@@ -84,7 +84,7 @@ coordinates/
 ├── device-simulator/    # 设备模拟器：车辆建模、双触发上报、漂移/伴随车辆场景注入
 ├── flink-jobs/          # 三个 Flink 作业：GpsCleanJob / FenceJob / H3AggJob
 ├── api-server/          # Spring Boot 后端：REST 9 组接口 + SSE + 告警归档
-├── frontend/            # Vue3 前端：地图、轨迹回放、围栏绘制、热力图、SSE 告警
+├── frontend/            # Vue3 监控大屏：深色地图、状态散点、围栏着色、ECharts 面板、SSE 告警
 ├── scripts/             # deploy-helper.sh（VM 一键启停/作业部署）、docker-compose.yml、围栏导入/体检工具
 ├── docs/                # handbook / design / ops / prompt / b_fence.sql / plans/
 └── pom.xml              # Maven 多模块父 POM（groupId com.bike.monitor）
