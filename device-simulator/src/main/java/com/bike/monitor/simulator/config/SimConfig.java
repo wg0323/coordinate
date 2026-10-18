@@ -21,6 +21,8 @@ public class SimConfig {
     private double driftRate = 0.02;
     /** 伴随车辆对数（题 3 套牌车演示） */
     private int companionPairs = 2;
+    /** 目标：围栏内停放车辆数（按约 64% 停放比例反推需迁入围栏的活跃车；0 = 不迁入） */
+    private int fenceParked = 3000;
     /** 运行真实秒数，0 = 一直运行 */
     private long durationSec = 0;
     /** 模拟时钟持久化文件：跨次启动保持 ts 单调连续（避免下游 watermark 被回退的 ts 钉死） */
@@ -75,6 +77,9 @@ public class SimConfig {
                 break;
             case "duration-sec":
                 durationSec = Long.parseLong(value);
+                break;
+            case "fence-parked":
+                fenceParked = Integer.parseInt(value);
                 break;
             case "clock-file":
                 clockFile = value;

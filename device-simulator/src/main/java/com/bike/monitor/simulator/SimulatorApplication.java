@@ -2,12 +2,14 @@ package com.bike.monitor.simulator;
 
 import com.bike.monitor.simulator.config.SimConfig;
 import com.bike.monitor.simulator.engine.SimEngine;
+import com.bike.monitor.simulator.generator.FenceParkingPlanner;
 import com.bike.monitor.simulator.generator.FleetGenerator;
 import com.bike.monitor.simulator.generator.RideGenerator;
 import com.bike.monitor.simulator.model.Bike;
 import com.bike.monitor.simulator.noise.DriftInjector;
 import com.bike.monitor.simulator.report.Reporter;
 import com.bike.monitor.simulator.scenario.CompanionScenario;
+import com.bike.monitor.simulator.store.FenceStore;
 import com.bike.monitor.simulator.store.FleetStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,11 +34,13 @@ public class SimulatorApplication {
 
     public static void main(String[] args) throws Exception {
         SimConfig config = SimConfig.parse(args);
-        log.info("模拟器启动：kafka={}, topic={}, mongo={}, speedFactor={}, vehicleRatio={}, driftRate={}, companionPairs={}",
+        log.info("模拟器启动：kafka={}, topic={}, mongo={}, speedFactor={}, vehicleRatio={}, driftRate={}, companionPairs={}, fenceParked={}",
                 config.getKafkaServers(), config.getTopic(), config.getMongoUri(),
-                config.getSpeedFactor(), config.getVehicleRatio(), config.getDriftRate(), config.getCompanionPairs());
+                config.getSpeedFactor(), config.getVehicleRatio(), config.getDriftRate(),
+                config.getCompanionPairs(), config.getFenceParked());
 
         List<Bike> fleet = loadFleet(config);
+        relocateToFences(fleet, config);
 
         CompanionScenario companion = new CompanionScenario();
         companion.bind(fleet, config.getCompanionPairs(), 42L);
@@ -85,6 +89,18 @@ public class SimulatorApplication {
         fleet = sample(fleet, config.getVehicleRatio());
         log.info("本次活跃车辆：{} 辆（vehicle-ratio={}）", fleet.size(), config.getVehicleRatio());
         return fleet;
+    }
+
+    /** 把部分活跃车的常驻点迁入围栏，使围栏内停放数量可见（--fence-parked=0 关闭） */
+    private static void relocateToFences(List<Bike> fleet, SimConfig config) {
+        if (config.getFenceParked() <= 0) {
+            return;
+        }
+        try (FenceStore store = new FenceStore(config.getMongoUri())) {
+            new FenceParkingPlanner(42L).assign(fleet, store.loadAll(), config.getFenceParked());
+        } catch (Exception e) {
+            log.warn("围栏常驻点分配失败，保持原常驻点：{}", e.getMessage());
+        }
     }
 
     /** 固定种子按序抽样：同一份数据每次启动抽中的车辆完全一致，模拟时钟/事件序列可复现 */

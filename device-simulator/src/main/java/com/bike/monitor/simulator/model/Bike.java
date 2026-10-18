@@ -11,9 +11,11 @@ public class Bike {
 
     private final String bikeId;
     private final District district;
-    /** 常驻点（锁车停留位置） */
-    private final double homeLng;
-    private final double homeLat;
+    /** 常驻点（锁车停留位置）；启动时可按围栏停放策略重新分配 */
+    @Setter
+    private double homeLng;
+    @Setter
+    private double homeLat;
 
     /** 状态代次：伴随时作废旧事件用 */
     @Setter

@@ -175,8 +175,9 @@ public class SimEngine implements Runnable {
                 break;
             case HEARTBEAT:
                 if (!bike.isRiding()) {
-                    send(bike, bike.getHomeLng() + (random.nextDouble() - 0.5) * 0.0005,
-                            bike.getHomeLat() + (random.nextDouble() - 0.5) * 0.0005,
+                    // 停放点抖动 ±0.2m：细长围栏只有 1~2m 宽，抖动过大会把车抖到栏外
+                    send(bike, bike.getHomeLng() + (random.nextDouble() - 0.5) * 0.000004,
+                            bike.getHomeLat() + (random.nextDouble() - 0.5) * 0.000004,
                             0, 0, event.simTs);
                     queue.add(new TimedEvent(event.simTs + HEARTBEAT_INTERVAL_MS, bike,
                             Type.HEARTBEAT, bike.getGeneration(), null));
