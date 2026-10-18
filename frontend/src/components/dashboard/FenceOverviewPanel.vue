@@ -12,20 +12,14 @@
       <span>平均装载率</span>
       <span class="num avg-value">{{ fmtPct(fenceStats?.avgLoadRate) }}</span>
     </div>
-    <div ref="barEl" class="bar"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useChart } from '../../composables/useChart'
 import { fmtNum, fmtPct } from '../../utils/format'
 import type { FenceStatsDto } from '../../types/stats'
 
-const props = defineProps<{ fenceStats: FenceStatsDto | null }>()
-
-const barEl = ref<HTMLElement>()
-const { ensure } = useChart(barEl)
+defineProps<{ fenceStats: FenceStatsDto | null }>()
 
 const COUNTS = [
   { key: 'normal', label: '正常', color: '#00ff88' },
@@ -34,45 +28,6 @@ const COUNTS = [
   { key: 'empty', label: '空置', color: '#4a586c' },
   { key: 'noCapacity', label: '未设容量', color: '#8fa3b8' }
 ] as const
-
-function renderBar(s: FenceStatsDto) {
-  const chart = ensure()
-  if (!chart) {
-    return
-  }
-  const items = COUNTS.filter(c => c.key !== 'noCapacity')
-  chart.setOption({
-    grid: { left: 40, right: 10, top: 10, bottom: 22 },
-    xAxis: { type: 'value', show: false },
-    yAxis: {
-      type: 'category',
-      data: items.map(c => c.label),
-      axisLabel: { color: '#7f9bbd', fontSize: 11 },
-      axisLine: { show: false },
-      axisTick: { show: false }
-    },
-    series: [
-      {
-        type: 'bar',
-        data: items.map(c => ({
-          value: s[c.key],
-          itemStyle: { color: c.color }
-        })),
-        barWidth: 12,
-        label: { show: true, position: 'right', color: '#e6f1ff', fontSize: 11 }
-      }
-    ]
-  })
-}
-
-watch(
-  () => props.fenceStats,
-  s => {
-    if (s) {
-      renderBar(s)
-    }
-  }
-)
 </script>
 
 <style scoped>
@@ -83,13 +38,17 @@ watch(
 .counts {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .c-row {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
+  line-height: 1.15;
   color: var(--text-dim);
 }
 .dot {
@@ -105,16 +64,15 @@ watch(
 }
 .avg-row {
   display: flex;
+  flex: none;
   justify-content: space-between;
   font-size: 12px;
   color: var(--text-dim);
-  margin-top: 6px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(127, 155, 189, 0.15);
 }
 .avg-value {
   color: var(--accent);
-}
-.bar {
-  flex: 1;
-  min-height: 0;
 }
 </style>

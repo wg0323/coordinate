@@ -1,10 +1,13 @@
 <template>
   <div class="panel dispatch-panel">
     <div class="panel-title">智能调度建议</div>
-    <div class="advice" v-for="(a, i) in DISPATCH_ADVICE" :key="i">
-      <span class="a-route">📍 {{ a.from }} → {{ a.to }}</span>
-      <span class="a-count">需调 <span class="num">{{ a.count }}</span> 辆</span>
-      <span class="a-revenue">预计收益 <span class="num">¥{{ a.revenue.toLocaleString() }}</span></span>
+    <!-- 建议列表按可用高度均布，底部状态行固定可见；不出现滚动条 -->
+    <div class="advice-list">
+      <div class="advice" v-for="(a, i) in DISPATCH_ADVICE" :key="i">
+        <span class="a-route">📍 {{ a.from }} → {{ a.to }}</span>
+        <span class="a-count">需调 <span class="num">{{ a.count }}</span> 辆</span>
+        <span class="a-revenue">预计收益 <span class="num">¥{{ a.revenue.toLocaleString() }}</span></span>
+      </div>
     </div>
     <div class="status-row">
       <span class="tag done">已执行 {{ DISPATCH_EXECUTED }} 条</span>
@@ -21,7 +24,15 @@ import { DISPATCH_ADVICE, DISPATCH_EXECUTED, DISPATCH_PENDING } from '../../mock
 .dispatch-panel {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+.advice-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
 }
 .advice {
   display: flex;
@@ -29,7 +40,7 @@ import { DISPATCH_ADVICE, DISPATCH_EXECUTED, DISPATCH_PENDING } from '../../mock
   gap: 2px;
   font-size: 12px;
   color: var(--text-dim);
-  padding: 4px 0;
+  padding: 2px 0;
   border-bottom: 1px dashed rgba(127, 155, 189, 0.15);
 }
 .a-route {
@@ -42,7 +53,7 @@ import { DISPATCH_ADVICE, DISPATCH_EXECUTED, DISPATCH_PENDING } from '../../mock
 .status-row {
   display: flex;
   gap: 8px;
-  margin-top: auto;
+  flex: none;
 }
 .tag {
   font-size: 11px;

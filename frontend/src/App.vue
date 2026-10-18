@@ -85,6 +85,11 @@ usePolling(pollFenceStats, 30_000)
 .area-top {
   grid-area: top;
 }
+/* 顶部栏撑满 80px 行高，否则 panel 只按内容高度收缩，行内下方留空 */
+.area-top > * {
+  height: 100%;
+  box-sizing: border-box;
+}
 .area-left {
   grid-area: left;
   display: flex;

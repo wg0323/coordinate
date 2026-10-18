@@ -1,13 +1,15 @@
 <template>
   <div class="panel kpi">
     <div class="panel-title">核心运营指标</div>
-    <div class="rows">
-      <div class="row" v-for="r in rows" :key="r.label">
-        <span class="label">{{ r.label }}</span>
-        <span class="num value" :class="{ 'num-change': flash }">{{ r.value }}</span>
+    <div class="kpi-body">
+      <div class="rows">
+        <div class="row" v-for="r in rows" :key="r.label">
+          <span class="label">{{ r.label }}</span>
+          <span class="num value" :class="{ 'num-change': flash }">{{ r.value }}</span>
+        </div>
       </div>
+      <div ref="ringEl" class="ring"></div>
     </div>
-    <div ref="ringEl" class="ring"></div>
   </div>
 </template>
 
@@ -78,8 +80,16 @@ watch(
   display: flex;
   flex-direction: column;
 }
+/* 行与环形图左右并排：上下排列时 6 行加 110px 环形图会超出面板高度导致重叠 */
+.kpi-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
+}
 .rows {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -87,13 +97,17 @@ watch(
 .row {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 .value {
-  font-size: 15px;
+  font-size: 14px;
 }
 .ring {
-  height: 110px;
+  width: 96px;
+  height: 96px;
+  flex: none;
+  align-self: center;
 }
 </style>
