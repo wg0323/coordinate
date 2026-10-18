@@ -42,11 +42,13 @@ public class TraceSimplifyService {
         if (points.size() <= 2) {
             return new ArrayList<>(points);
         }
+        // 轨迹点转 JTS 坐标序列（仅经纬度参与抽稀，ts/speed 后续回填）。
         Coordinate[] coords = new Coordinate[points.size()];
         for (int i = 0; i < points.size(); i++) {
             coords[i] = new Coordinate(points.get(i).getLng(), points.get(i).getLat());
         }
         LineString line = FACTORY.createLineString(coords);
+        // JTS 内置 DP 抽稀，容差单位为度，与自实现版本同参对照。
         LineString simplified = (LineString) DouglasPeuckerSimplifier.simplify(line, toleranceDeg);
         List<TracePoint> result = new ArrayList<>();
         // 按坐标顺序映射回原始点（保留 ts/speed）

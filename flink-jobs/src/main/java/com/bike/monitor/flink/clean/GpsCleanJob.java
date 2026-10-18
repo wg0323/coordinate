@@ -30,12 +30,14 @@ import java.util.Objects;
 public class GpsCleanJob {
 
     public static void main(String[] args) throws Exception {
+        // 启动参数（--kafka/--redis/--tdengine/--checkpoint-dir/--parallelism/--backend），未传则用默认值。
         ParameterTool params = ParameterTool.fromArgs(args);
         String kafkaServers = params.get("kafka", "kafka:9092");
         String redis = params.get("redis", "redis:6379");
         String tdengineUrl = params.get("tdengine", "jdbc:TAOS-RS://tdengine:6041");
         String checkpointDir = params.get("checkpoint-dir", "file:///opt/flink/checkpoints");
 
+        // 流执行环境：默认并行度 3。
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(params.getInt("parallelism", 3));
 
@@ -52,6 +54,7 @@ public class GpsCleanJob {
         env.getCheckpointConfig().setExternalizedCheckpointCleanup(
                 CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
 
+        // 输入源：bike-gps-raw 原始点位，从最新位点开始消费。
         KafkaSource<String> source = KafkaSource.<String>builder()
                 .setBootstrapServers(kafkaServers)
                 .setTopics("bike-gps-raw")
@@ -60,10 +63,12 @@ public class GpsCleanJob {
                 .setValueOnlyDeserializer(new SimpleStringSchema())
                 .build();
 
+        // JSON 解析为 GpsPoint，解析失败（null）的点直接丢弃。
         DataStream<GpsPoint> raw = env.fromSource(source, WatermarkStrategy.noWatermarks(), "kafka-source")
                 .map(JsonUtil::parseGpsPoint).name("parse-json")
                 .filter(Objects::nonNull).name("drop-invalid-json");
 
+        // 清洗链（按 bikeId 分区保序）：速度跳变过滤 → 卡尔曼滤波 → 5 点中值滤波。
         DataStream<GpsPoint> cleaned = raw
                 .keyBy(GpsPoint::getBikeId)
                 .process(new SpeedJumpFilter()).name("speed-jump-filter")
@@ -72,6 +77,7 @@ public class GpsCleanJob {
                 .keyBy(GpsPoint::getBikeId)
                 .process(new MedianFilter()).name("median-filter");
 
+        // 三路输出：清洗结果 topic、TDengine 冷轨迹、Redis GEO 最新位置。
         cleaned.map(CleanKafkaSink::toJson).name("to-json")
                 .sinkTo(CleanKafkaSink.build(kafkaServers)).name("bike-gps-clean-sink");
         cleaned.addSink(new TdengineSink(tdengineUrl)).name("tdengine-sink");

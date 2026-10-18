@@ -35,7 +35,9 @@ public class H3AggJob {
     public static final int H3_RES = 8;
 
     public static void main(String[] args) throws Exception {
+        // 启动参数（--kafka/--redis/--parallelism/--backend/--checkpoint-dir 等）。
         ParameterTool params = ParameterTool.fromArgs(args);
+        // 执行环境、并行度、checkpoint 与状态后端统一由 JobSetup 配置。
         StreamExecutionEnvironment env = JobSetup.setup(params);
         buildGraph(env, params);
         env.execute("H3AggJob");
@@ -45,6 +47,7 @@ public class H3AggJob {
         String kafkaServers = params.get("kafka", "kafka:9092");
         String redis = params.get("redis", "redis:6379");
 
+        // 输入：清洗后的 GPS 流（bike-gps-clean），从最新位点消费。
         KafkaSource<String> source = KafkaSource.<String>builder()
                 .setBootstrapServers(kafkaServers)
                 .setTopics(CleanKafkaSink.TOPIC)
@@ -53,6 +56,7 @@ public class H3AggJob {
                 .setValueOnlyDeserializer(new SimpleStringSchema())
                 .setProperty("partition.discovery.interval.ms", "10000")
                 .build();
+        // JSON 解析为 GpsPoint，丢弃解析失败的点；按事件时间推进水位线，容忍 5s 乱序、60s 空闲。
         DataStream<GpsPoint> gps = env.fromSource(source,
                         WatermarkStrategy.noWatermarks(), "kafka-gps-clean")
                 .map(JsonUtil::parseGpsPoint, org.apache.flink.api.common.typeinfo.TypeInformation.of(GpsPoint.class))
@@ -63,6 +67,7 @@ public class H3AggJob {
                                 .withTimestampAssigner((point, ts) -> point.getTs())
                                 .withIdleness(Duration.ofSeconds(60)));
 
+        // 以 H3 网格为 key，1 分钟滚动窗口统计 distinct 车辆数，窗口触发后写 Redis。
         gps.keyBy(point -> toCell(point))
                 .window(TumblingEventTimeWindows.of(Time.minutes(1)))
                 .aggregate(
@@ -105,6 +110,7 @@ public class H3AggJob {
                 .addSink(new HeatRedisSink(redis)).name("heat-redis-sink");
     }
 
+    // 经纬度 → H3 cell 索引；编码异常（非法经纬度）归入 0L。
     private static Long toCell(GpsPoint point) {
         try {
             return H3CoreHolder.INSTANCE.latLngToCell(point.getLat(), point.getLng(), H3_RES);

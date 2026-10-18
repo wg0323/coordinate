@@ -12,22 +12,28 @@ import redis.clients.jedis.JedisPoolConfig;
  */
 public class HeatRedisSink extends RichSinkFunction<HeatCell> {
 
+    // Redis key 前缀：heat:{窗口起始毫秒}，每个窗口一个 hash。
     private static final String KEY_PREFIX = "heat:";
+    // key 保留 3 分钟（约 2 个窗口兜底），防止历史窗口 key 无限膨胀。
     private static final int TTL_SECONDS = 180;
 
+    // Redis 地址（host:port）。
     private final String hostPort;
+    // Jedis 连接池：open 时创建、close 时释放（transient 不参与 Flink 序列化）。
     private transient JedisPool pool;
 
     public HeatRedisSink(String hostPort) {
         this.hostPort = hostPort;
     }
 
+    // 每个 subtask 独立建池，连接超时 2s。
     @Override
     public void open(Configuration parameters) {
         String[] parts = hostPort.split(":");
         pool = new JedisPool(new JedisPoolConfig(), parts[0], Integer.parseInt(parts[1]), 2000);
     }
 
+    // 按窗口 key 写入 H3 单元格计数并刷新 TTL（同 key 重复写幂等）。
     @Override
     public void invoke(HeatCell cell, Context context) {
         try (Jedis jedis = pool.getResource()) {
@@ -39,6 +45,7 @@ public class HeatRedisSink extends RichSinkFunction<HeatCell> {
         }
     }
 
+    // 作业关闭时释放连接池。
     @Override
     public void close() {
         if (pool != null) {
