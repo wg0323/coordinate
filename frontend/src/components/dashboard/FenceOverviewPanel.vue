@@ -18,15 +18,14 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import echarts from '../../utils/echarts'
-import type { EChartsType } from '../../utils/echarts'
+import { useChart } from '../../composables/useChart'
 import { fmtNum, fmtPct } from '../../utils/format'
 import type { FenceStatsDto } from '../../types/stats'
 
 const props = defineProps<{ fenceStats: FenceStatsDto | null }>()
 
 const barEl = ref<HTMLElement>()
-let chart: EChartsType | null = null
+const { ensure } = useChart(barEl)
 
 const COUNTS = [
   { key: 'normal', label: '正常', color: '#00ff88' },
@@ -37,11 +36,9 @@ const COUNTS = [
 ] as const
 
 function renderBar(s: FenceStatsDto) {
-  if (!barEl.value) {
-    return
-  }
+  const chart = ensure()
   if (!chart) {
-    chart = echarts.init(barEl.value)
+    return
   }
   const items = COUNTS.filter(c => c.key !== 'noCapacity')
   chart.setOption({

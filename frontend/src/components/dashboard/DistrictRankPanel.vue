@@ -8,20 +8,18 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import echarts from '../../utils/echarts'
-import type { EChartsType } from '../../utils/echarts'
+import { useChart } from '../../composables/useChart'
 import type { StatsDto } from '../../types/stats'
 
 const props = defineProps<{ stats: StatsDto | null }>()
 
 const barEl = ref<HTMLElement>()
-let chart: EChartsType | null = null
+const { ensure } = useChart(barEl)
 
 function render(s: StatsDto) {
-  if (!barEl.value) {
-    return
-  }
+  const chart = ensure()
   if (!chart) {
-    chart = echarts.init(barEl.value)
+    return
   }
   const top = s.districtCounts.slice(0, 12)
   chart.setOption({

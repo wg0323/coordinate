@@ -13,8 +13,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import echarts from '../../utils/echarts'
-import type { EChartsType } from '../../utils/echarts'
+import { useChart } from '../../composables/useChart'
 import type { StatsDto } from '../../types/stats'
 import { fmtNum, fmtPct } from '../../utils/format'
 
@@ -22,7 +21,7 @@ const props = defineProps<{ stats: StatsDto | null }>()
 
 const ringEl = ref<HTMLElement>()
 const flash = ref(false)
-let chart: EChartsType | null = null
+const { ensure } = useChart(ringEl)
 
 const rows = computed(() => {
   const s = props.stats
@@ -37,11 +36,9 @@ const rows = computed(() => {
 })
 
 function renderRing(rate: number) {
-  if (!ringEl.value) {
-    return
-  }
+  const chart = ensure()
   if (!chart) {
-    chart = echarts.init(ringEl.value)
+    return
   }
   chart.setOption({
     series: [

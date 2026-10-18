@@ -7,14 +7,13 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import echarts from '../../utils/echarts'
-import type { EChartsType } from '../../utils/echarts'
+import { useChart } from '../../composables/useChart'
 import type { StatsDto } from '../../types/stats'
 
 const props = defineProps<{ stats: StatsDto | null }>()
 
 const roseEl = ref<HTMLElement>()
-let chart: EChartsType | null = null
+const { ensure } = useChart(roseEl)
 
 const STATUS_META = [
   { key: 'riding', name: '骑行中', color: '#00d4ff' },
@@ -23,11 +22,9 @@ const STATUS_META = [
 ] as const
 
 function render(s: StatsDto) {
-  if (!roseEl.value) {
-    return
-  }
+  const chart = ensure()
   if (!chart) {
-    chart = echarts.init(roseEl.value)
+    return
   }
   const total = s.riding + s.idle + s.offline
   chart.setOption({

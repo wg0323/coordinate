@@ -11,19 +11,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import echarts from '../../utils/echarts'
-import type { EChartsType } from '../../utils/echarts'
+import { useChart } from '../../composables/useChart'
 import { TREND_TODAY, TREND_YESTERDAY } from '../../mock/dashboard'
 
 const lineEl = ref<HTMLElement>()
-let chart: EChartsType | null = null
+const { onReady } = useChart(lineEl)
 
-onMounted(() => {
-  if (!lineEl.value) {
-    return
-  }
-  chart = echarts.init(lineEl.value)
+onReady(chart => {
   chart.setOption({
     grid: { left: 34, right: 8, top: 8, bottom: 18 },
     xAxis: {

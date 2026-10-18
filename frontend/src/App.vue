@@ -70,14 +70,16 @@ usePolling(pollFenceStats, 30_000)
 .screen {
   height: 100%;
   display: grid;
-  grid-template:
-    'top top top' 80px
-    'left center right' 1fr
-    'bottom bottom bottom' 60px
-    / minmax(340px, 20%) 1fr minmax(340px, 20%);
+  grid-template-areas:
+    'top top top'
+    'left center right'
+    'bottom bottom bottom';
+  grid-template-rows: 80px minmax(0, 1fr) 60px;
+  grid-template-columns: minmax(340px, 20%) 1fr minmax(340px, 20%);
   gap: 10px;
   padding: 10px;
   background: var(--bg-main);
+  overflow: hidden;
 }
 .area-top {
   grid-area: top;
@@ -101,10 +103,14 @@ usePolling(pollFenceStats, 30_000)
 .area-bottom {
   grid-area: bottom;
 }
-/* 左右面板平分 */
+/* 左右面板：核心指标权重更高，其余平分；min-height 防内容撑破列 */
 .area-left > *,
 .area-right > * {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+.area-left > :first-child {
+  flex: 1.3;
 }
 </style>

@@ -1,4 +1,10 @@
 /* 大屏设计 tokens —— 深色科技风（方案视觉规范） */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
 :root {
   --bg-main: #0a1628;
   --bg-panel: rgba(13, 33, 55, 0.85);
