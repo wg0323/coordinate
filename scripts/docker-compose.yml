@@ -4,6 +4,14 @@ name: coordinates-vm
 # 内存预算：宿主 + Docker daemon ≈ 1G，容器合计 ≈ 5.9G，留 ~1G 余量防 OOM。
 # 镜像由 Windows 导入（docker load），tag 已重命名为通用名，与导出脚本配套。
 
+# 统一限制容器日志体积：48G 磁盘曾被 json 日志 + Kafka 日志段写满，
+# 写满后 docker 日志文件与 Kafka mmap 索引一起损坏，broker 直接 exit=1
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:6.2.6
@@ -16,6 +24,7 @@ services:
     volumes:
       - ./data/redis:/data
     networks: [middleware]
+    logging: *default-logging
 
   mongodb:
     image: bitnami/mongodb:6.0
@@ -27,6 +36,7 @@ services:
     volumes:
       - ./data/mongodb:/bitnami/mongodb
     networks: [middleware]
+    logging: *default-logging
 
   tdengine:
     image: tdengine/tdengine:3.3.3.0
@@ -43,6 +53,7 @@ services:
       - ./data/tdengine/data:/var/lib/taos
       - ./data/tdengine/log:/var/log/taos
     networks: [middleware]
+    logging: *default-logging
 
   zookeeper:
     image: bitnami/zookeeper:3.5.9
@@ -55,6 +66,7 @@ services:
     volumes:
       - ./data/zookeeper:/bitnami/zookeeper
     networks: [middleware]
+    logging: *default-logging
 
   kafka:
     image: wurstmeister/kafka:2.13-2.8.1
@@ -65,15 +77,23 @@ services:
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      # 固定日志目录：镜像默认用 /kafka/kafka-logs-$HOSTNAME，容器每重建一次就新建一个目录，
+      # 历史目录从不回收（已累积 12G），且 retention 只对当前目录生效
+      - KAFKA_LOG_DIRS=/kafka/kafka-logs
       - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,PLAINTEXT_HOST://${KAFKA_HOST_IP:-localhost}:9092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
       # 限制堆，防止吃满 768m 限额
       - KAFKA_HEAP_OPTS=-Xmx512m -Xms256m
+      # 日志段保留上限（每分区 512m、24h、段 128m），防止无限增长写满宿主机磁盘
+      - KAFKA_LOG_RETENTION_BYTES=536870912
+      - KAFKA_LOG_RETENTION_HOURS=24
+      - KAFKA_LOG_SEGMENT_BYTES=134217728
     volumes:
       - ./data/kafka:/kafka
     networks: [middleware]
+    logging: *default-logging
 
   jobmanager:
     image: apache/flink:1.17.2
@@ -95,6 +115,7 @@ services:
     volumes:
       - ./data/flink/checkpoints:/opt/flink/checkpoints
     networks: [middleware]
+    logging: *default-logging
 
   taskmanager:
     image: apache/flink:1.17.2
@@ -115,6 +136,7 @@ services:
     volumes:
       - ./data/flink/checkpoints:/opt/flink/checkpoints
     networks: [middleware]
+    logging: *default-logging
 
 networks:
   middleware:

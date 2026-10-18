@@ -25,7 +25,8 @@ if [ "${1:-}" = "stop" ]; then
         docker exec kafka bash -c 'echo > /dev/tcp/127.0.0.1/9092' >/dev/null 2>&1 || break
         sleep 2
     done
-    docker compose -f docker-compose.yml stop
+    # 默认 10s 超时会把没关完的 Kafka 直接 SIGKILL，留下未刷盘的日志段，下次启动要全量恢复
+    docker compose -f docker-compose.yml stop -t 60
     echo "[OK] 已全部停止（数据保留在 ./data/，下次 ./deploy-helper.sh 恢复）"
     exit 0
 fi
@@ -47,12 +48,25 @@ fail() { echo "[FAIL] $1"; exit 1; }
 docker compose -f docker-compose.yml up -d || fail "docker compose 启动失败"
 
 # ---------- 2. Kafka 就绪自愈（先判断 ZK 残留是否真实存在，避免假阳性清理） ----------
-kafka_ready() { docker exec kafka kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1; }
+# 探测走 Kafka 客户端，默认 request.timeout=30s、default.api.timeout=60s，broker 未起时每次探测都要等满，
+# 60 次循环能卡几十分钟。这里用 client 配置把单次探测压到 5s 内。
+kafka_ready() { docker exec kafka kafka-broker-api-versions.sh --bootstrap-server kafka:9092 --command-config /tmp/probe.properties >/dev/null 2>&1; }
+# 容器已退出就别再傻等；docker logs 读到损坏的 json 日志（Error grabbing logs）时降级读容器内 server.log
+kafka_dead() { local s; s=$(docker inspect -f '{{.State.Status}}' kafka 2>/dev/null); [ "$s" = "exited" ] || [ "$s" = "dead" ]; }
+kafka_logs() { docker logs kafka --tail "${1:-30}" 2>/dev/null || docker exec kafka sh -c "tail -n ${1:-30} /opt/kafka/logs/server.log" 2>/dev/null; }
 # zkCli 的结果行以 [ 开头（如 "[1]" 或 "[]"），合并 stderr 防输出丢失；取最后一个 [ 行判断
 zk_broker_ids() { docker exec zookeeper zkCli.sh ls /brokers/ids 2>&1 | grep -E '^\[' | tail -1; }
 
 echo "[..] 等待 Kafka 就绪..."
-for i in $(seq 1 60); do kafka_ready && break; sleep 2; done
+for i in $(seq 1 10); do
+    docker exec kafka sh -c 'printf "request.timeout.ms=3000\ndefault.api.timeout.ms=5000\n" > /tmp/probe.properties' 2>/dev/null && break
+    sleep 1
+done
+for i in $(seq 1 60); do
+    kafka_ready && break
+    kafka_dead && { kafka_logs 40; fail "Kafka 容器已退出，未能就绪"; }
+    sleep 2
+done
 if ! kafka_ready; then
     ids=$(zk_broker_ids)
     if echo "$ids" | grep -q '\[1\]'; then
@@ -60,12 +74,16 @@ if ! kafka_ready; then
         docker exec zookeeper zkCli.sh rmr /brokers/ids/1 >/dev/null 2>&1
         docker restart kafka >/dev/null
         for i in $(seq 1 60); do kafka_ready && break; sleep 2; done
-        kafka_ready || { docker logs kafka --tail 30; fail "Kafka 清理残留后仍未就绪"; }
+        kafka_ready || { kafka_logs 40; fail "Kafka 清理残留后仍未就绪"; }
     else
         echo "[WARN] Kafka 迟迟未就绪，ls /brokers/ids = ${ids:-<zkCli 无输出，检查 zookeeper 容器>}（无残留则多半在恢复日志）"
-        docker logs kafka --tail 5 2>&1
-        for i in $(seq 1 60); do kafka_ready && break; sleep 2; done
-        kafka_ready || { docker logs kafka --tail 30; fail "Kafka 仍未就绪，请按上方日志排查"; }
+        kafka_logs 20
+        for i in $(seq 1 60); do
+            kafka_ready && break
+            kafka_dead && { kafka_logs 40; fail "Kafka 容器已退出，未能就绪"; }
+            sleep 2
+        done
+        kafka_ready || { kafka_logs 60; fail "Kafka 仍未就绪，请按上方日志排查"; }
     fi
 fi
 ok "中间件已启动 (Redis/MongoDB/TDengine/ZK/Kafka)"
