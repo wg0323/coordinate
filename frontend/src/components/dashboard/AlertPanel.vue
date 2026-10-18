@@ -35,10 +35,16 @@ const disconnected = ref(false)
 let seq = 0
 let es: EventSource | null = null
 
+/** 去掉名称中的容量前缀："[停放45] 东单站" → "东单站" */
+function stripPrefix(name: string): string {
+  return name.replace(/^\[[^\]]*]\s*/, '')
+}
+
 function toItem(a: FenceAlert): AlertItem {
   return {
     ...a,
     key: `${a.ts}-${seq++}`,
+    fenceName: stripPrefix(a.fenceName),
     action: a.event === 'ENTER' ? '驶入' : '驶出',
     ago: `${Math.max(0, Math.round((Date.now() - a.ts) / 60000))} 分钟前`
   }
