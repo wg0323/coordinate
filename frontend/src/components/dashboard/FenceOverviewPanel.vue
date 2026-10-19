@@ -38,18 +38,20 @@ const COUNTS = [
 .counts {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  justify-content: space-around;
 }
 .c-row {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  line-height: 1.15;
+  line-height: 1.2;
   color: var(--text-dim);
+  padding: 4px 0;
 }
 .dot {
   width: 8px;
@@ -61,6 +63,7 @@ const COUNTS = [
 }
 .c-value {
   color: var(--text-main);
+  font-size: 14px;
 }
 .avg-row {
   display: flex;
@@ -69,10 +72,11 @@ const COUNTS = [
   font-size: 12px;
   color: var(--text-dim);
   margin-top: 4px;
-  padding-top: 4px;
+  padding-top: 6px;
   border-top: 1px dashed rgba(127, 155, 189, 0.15);
 }
 .avg-value {
   color: var(--accent);
+  font-size: 14px;
 }
 </style>
