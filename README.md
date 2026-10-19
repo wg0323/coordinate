@@ -1,6 +1,6 @@
-# 共享单车实时位置监管平台（面试全覆盖版）
+# 共享单车实时位置监管平台
 
-> 以一个可本地运行、可演示、可讲解的完整系统，覆盖 `docs/prompt.md` 全部 11 道坐标/围栏面试题 + 4 条知识点。设备模拟器生产 GPS → Kafka 削峰 → Flink 清洗/围栏/热力聚合 → REST/SSE → Leaflet 地图，全链路可跑通、可压测、可对照面试题演示。
+> 以一个可本地运行、可演示、可讲解的完整系统，覆盖坐标转换、围栏判定、轨迹存储、清洗抽稀等核心场景。设备模拟器生产 GPS → Kafka 削峰 → Flink 清洗/围栏/热力聚合 → REST/SSE → Leaflet 地图，全链路可跑通、可压测、可对照演示操作复现。
 
 ## 📋 目录
 
@@ -11,22 +11,14 @@
 - [环境要求](#环境要求)
 - [快速开始](#快速开始)
 - [配置说明](#配置说明)
-- [演示对照（11 道面试题）](#演示对照11-道面试题)
+- [演示对照](#演示对照)
 - [部署指南](#部署指南)
 - [API 文档](#api-文档)
 - [常见问题](#常见问题)
 
 ## 项目简介
 
-项目为面试准备而建，目标是"可运行、可演示、可讲解"：每个面试题背后都有对应的真实代码、可执行的演示操作和实测数字（如 10 万围栏 STRtree 加速 46 倍、链路稳态处理 ~8k 条/s）。
-
-核心文档：
-
-- 学习手册（主线）：`docs/handbook.md`，从零讲原理 + 踩坑实录 + 面试逐题速答
-- 设计方案：`docs/design.md`（含收益/成本裁决与演进预案）
-- 实施计划：`docs/plans/2026-10-14-coordinates-system.md`
-- 运维手册：`docs/ops.md`
-- 面试题原文：`docs/prompt.md`
+项目目标是"可运行、可演示、可讲解"：每个功能背后都有对应的真实代码、可执行的演示操作和实测数字（如 10 万围栏 STRtree 加速 46 倍、链路稳态处理 ~8k 条/s）。
 
 ### 核心功能
 
@@ -36,7 +28,7 @@
 - [x] 热力聚合：H3 res8 + 1min 滚动窗口 distinct 车辆数（H3AggJob）
 - [x] 后端：REST 9 组接口 + SSE 实时告警推送 + 告警 MongoDB 归档
 - [x] 前端监控大屏：中心辐射型深色大屏（顶栏/左右面板/中央地图/底部数据带），车辆状态着色（绿=空闲/灰=骑行中）+ zoom 联动车辆热力云 + 围栏装载状态着色 + ECharts 图表 + SSE 实时告警
-- [x] 真实围栏数据：2017 年监管平台 b_fence 数据 9093 条经清洗后入库 6917 条（GCJ-02 → WGS84）
+- [x] 真实围栏数据：入库 6917 条
 - [x] 轨迹存储冷热分离：Redis GEO（热）+ TDengine（冷，KEEP 90d）+ MongoDB（属性/围栏/告警）
 
 ## 系统架构
@@ -86,7 +78,6 @@ coordinates/
 ├── api-server/          # Spring Boot 后端：REST 9 组接口 + SSE + 告警归档
 ├── frontend/            # Vue3 监控大屏：深色地图、状态散点、围栏着色、ECharts 面板、SSE 告警
 ├── scripts/             # deploy-helper.sh（VM 一键启停/作业部署）、docker-compose.yml、围栏导入/体检工具
-├── docs/                # handbook / design / ops / prompt / b_fence.sql / plans/
 └── pom.xml              # Maven 多模块父 POM（groupId com.bike.monitor）
 ```
 
@@ -127,7 +118,7 @@ done
 
 ### 围栏数据导入（可选）
 
-`docs/b_fence.sql` 是 2017 年监管平台的真实围栏数据（9093 条，GCJ-02 坐标系）。在开发机执行导入脚本，自动完成清洗（status=-1 剔除、面积 <0.5m² 剔除、相邻重复点、自相交）与坐标转换，最终入库 6917 条：
+真实围栏数据为 2017 年监管平台导出的 `b_fence.sql`（9093 条，GCJ-02 坐标系），该文件未随仓库公开，需自行放到 `docs/` 目录。在开发机执行导入脚本，自动完成清洗（status=-1 剔除、面积 <0.5m² 剔除、相邻重复点、自相交）与坐标转换，最终入库 6917 条：
 
 ```bash
 node scripts/import-fences.mjs
@@ -154,6 +145,7 @@ java -jar device-simulator\target\device-simulator-1.0.0-SNAPSHOT.jar --mode=his
 java -jar api-server\target\api-server-1.0.0-SNAPSHOT.jar
 
 # 4. 启动前端（开发期 Vite proxy /api → 8080）
+#    先在 frontend/.env.local 写入 VITE_TIANDITU_KEY=<你的天地图 key>，否则底图瓦片无法加载
 cd frontend && npm install && npm run dev     # → http://localhost:5173
 ```
 
@@ -166,24 +158,24 @@ cd frontend && npm install && npm run dev     # → http://localhost:5173
 | 同文件 `spring.kafka.bootstrap-servers` | Kafka 地址 | 192.168.1.25:9092 |
 | 同文件 `tdengine.url` | TDengine REST 连接（root/taosdata） | jdbc:TAOS-RS://192.168.1.25:6041 |
 | `/opt/.env` 的 `KAFKA_HOST_IP` | Kafka 对宿主机广播地址，需与 VM IP 一致 | 192.168.1.25 |
-| `frontend/src/components/MapView.vue` 的 `tk` | 天地图 key（已申请，demo 用途硬编码；生产应绑域名白名单） | 见文件 |
+| `frontend/.env.local` 的 `VITE_TIANDITU_KEY` | 天地图 key（需自行申请，仓库不内置；生产应绑域名白名单） | 未配置 |
 | `knife4j.production=true` | 生产环境关闭在线文档 | 未开启 |
 
-## 演示对照（11 道面试题）
+## 演示对照
 
 | 演示 | 操作 |
 | --- | --- |
-| 题 1 清洗 | 对比 `kafka-console-consumer` 读 raw 与 clean 两个 topic：注入的瞬移/横跳点被剔除 |
-| 题 2 抽稀 | 页面「轨迹回放」输入 bikeId，拖动阈值滑杆，观察点数 13→4 |
-| 题 3 相似度 | `GET /api/similarity?bikeA=..&bikeB=..`（配合模拟器伴随车辆场景=套牌车） |
-| 题 4 坐标系 | `GET /api/coord/convert?lng=..&lat=..` 同点三系对比 |
-| 题 5 存储 | Redis `bike:latest`（热）/ TDengine `gps_trace`（冷, KEEP 90d）/ MongoDB（属性） |
-| 题 6 GeoHash | `coordinate-common/GeoHash.java` 九宫格实现；页面热力云（leaflet.heat 核密度，默认关闭、勾选开启，zoom<11 自动显示） |
-| 题 7 选型 | 四种存储各司其职，「系统架构」图即答案 |
-| 题 8 射线法 | `RayCastingTest`：凹多边形/边界/顶点 20 用例，与 JTS covers 对照 |
-| 题 9 10 万围栏 | `FenceIndexBenchmark`：STRtree 5.5µs/点 vs 全量 254µs，加速 46 倍 |
-| 题 10 Flink 报警 | 页面画围栏 → SSE 实时弹 ENTER/EXIT → Mongo alerts 归档 |
-| 题 11 系统设计 | 全链路：双触发上报→削峰→H3 聚合/实时点位→热力云→bbox 点位接口 |
+| 清洗 | 对比 `kafka-console-consumer` 读 raw 与 clean 两个 topic：注入的瞬移/横跳点被剔除 |
+| 抽稀 | 页面「轨迹回放」输入 bikeId，拖动阈值滑杆，观察点数 13→4 |
+| 相似度 | `GET /api/similarity?bikeA=..&bikeB=..`（配合模拟器伴随车辆场景=套牌车） |
+| 坐标系 | `GET /api/coord/convert?lng=..&lat=..` 同点三系对比 |
+| 存储 | Redis `bike:latest`（热）/ TDengine `gps_trace`（冷, KEEP 90d）/ MongoDB（属性） |
+| GeoHash | `coordinate-common/GeoHash.java` 九宫格实现；页面热力云（leaflet.heat 核密度，默认关闭、勾选开启，zoom<11 自动显示） |
+| 选型 | 四种存储各司其职，「系统架构」图即答案 |
+| 射线法 | `RayCastingTest`：凹多边形/边界/顶点 20 用例，与 JTS covers 对照 |
+| 10 万围栏 | `FenceIndexBenchmark`：STRtree 5.5µs/点 vs 全量 254µs，加速 46 倍 |
+| Flink 报警 | 页面画围栏 → SSE 实时弹 ENTER/EXIT → Mongo alerts 归档 |
+| 系统设计 | 全链路：双触发上报→削峰→H3 聚合/实时点位→热力云→bbox 点位接口 |
 
 ## 部署指南
 
@@ -209,7 +201,7 @@ scp flink-jobs/target/flink-jobs-1.0.0-SNAPSHOT.jar root@192.168.1.25:/opt/
 ## 常见问题
 
 **Q: Flink 作业 RUNNING 但不消费？**
-A: 三作业共存要求 TM slot ≥ 各作业顶点并行度之和（4+3+2=9），先查 `NoResourceAvailableException`；再查 topic 是否存在。判断消费健康只看下游 topic 的 log-end 增速，消费组 lag/offset 因 checkpoint 批量提交不可信。详见 `docs/ops.md`。
+A: 三作业共存要求 TM slot ≥ 各作业顶点并行度之和（4+3+2=9），先查 `NoResourceAvailableException`；再查 topic 是否存在。判断消费健康只看下游 topic 的 log-end 增速，消费组 lag/offset 因 checkpoint 批量提交不可信。
 
 **Q: KafkaSource 报 `UnknownTopicOrPartitionException` 陷入 RESTARTING 循环？**
 A: topic 必须预建（Flink KafkaSource 显式禁用了自动创建），按上面命令创建对应分区数。

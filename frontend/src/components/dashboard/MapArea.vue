@@ -49,6 +49,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import L from 'leaflet'
 import MapView from '../MapView.vue'
 import HeatLayer from '../HeatLayer.vue'
 import BikeLayer from './BikeLayer.vue'
@@ -56,7 +57,7 @@ import OpsLayer from './OpsLayer.vue'
 import DensityGridLayer from './DensityGridLayer.vue'
 import FenceStatusLayer from './FenceStatusLayer.vue'
 import { fetchBBox } from '../../api/nearby'
-import { getMap, getMapAsync } from '../../mapStore'
+import { getMapAsync } from '../../mapStore'
 import { usePolling } from '../../composables/usePolling'
 import { fmtNum } from '../../utils/format'
 import { HEAT_LEGEND_CSS } from '../../utils/heat'
@@ -84,10 +85,14 @@ const toggles = ref<{ bikes: boolean; fences: boolean; heat: boolean; grid: bool
 
 const bikes = ref<NearbyBike[]>([])
 const zoom = ref(12)
+const maxZoom = ref(Infinity)
+let map: L.Map | null = null
 
 // zoom 联动：<11 时热力云即聚合视图，散点隐藏；网格只是悬停查询层，不占视觉，可与散点/热力并存
-const bikesVisible = computed(() => toggles.value.bikes && zoom.value >= 11 && !toggles.value.heat)
-const heatAuto = computed(() => toggles.value.heat || zoom.value < 11)
+// 到最大缩放后热力云关闭，只保留散点和围栏
+const atMaxZoom = computed(() => zoom.value >= maxZoom.value)
+const heatAuto = computed(() => !atMaxZoom.value && (toggles.value.heat || zoom.value < 11))
+const bikesVisible = computed(() => toggles.value.bikes && zoom.value >= 11 && !heatAuto.value)
 
 async function pollBikes() {
   try {
@@ -107,21 +112,26 @@ function onMoveEnd() {
   }
   moveTimer = window.setTimeout(pollBikes, 400)
 }
-const onZoomEnd = () => (zoom.value = getMap().getZoom())
+const onZoomEnd = () => {
+  if (map) {
+    zoom.value = map.getZoom()
+  }
+}
 
 usePolling(pollBikes, 15_000)
 
 onMounted(async () => {
-  const map = await getMapAsync()
+  map = await getMapAsync()
   zoom.value = map.getZoom()
+  maxZoom.value = map.getMaxZoom()
   map.on('zoomend', onZoomEnd)
   map.on('moveend', onMoveEnd)
 })
 
 onUnmounted(() => {
-  const map = getMap()
-  map.off('zoomend', onZoomEnd)
-  map.off('moveend', onMoveEnd)
+  map?.off('zoomend', onZoomEnd)
+  map?.off('moveend', onMoveEnd)
+  map = null
   if (moveTimer) {
     clearTimeout(moveTimer)
   }

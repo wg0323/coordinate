@@ -5,6 +5,7 @@ dependency-reduced-pom.xml
 # Node / 前端
 node_modules/
 dist/
+.env.local
 
 # IDE
 .idea/

@@ -3,7 +3,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import L from 'leaflet'
-import { getMap, getMapAsync } from '../../mapStore'
+import { getMapAsync } from '../../mapStore'
 import { listFences } from '../../api/fence'
 import type { FenceDto } from '../../types'
 import type { FenceCellStatDto, FenceStatsDto } from '../../types/stats'
@@ -50,15 +50,19 @@ function statusOf(cell: FenceCellStatDto | undefined): string {
 }
 
 let group: L.LayerGroup | null = null
+let map: L.Map | null = null
 /** Canvas 渲染器复用：每次 render 新建会在地图上堆积 canvas，长时间运行内存持续增长 */
 let renderer: L.Canvas | null = null
 let disposed = false
 
 async function render() {
-  const map = await getMapAsync()
-  if (disposed) {
+  if (!map) {
+    map = await getMapAsync()
+  }
+  if (disposed || !map) {
     return
   }
+  const currentMap = map
   if (group) {
     map.removeLayer(group)
     group = null
@@ -119,7 +123,7 @@ async function render() {
         L.popup({ closeButton: true, autoPan: false })
           .setLatLng(bounds.getCenter())
           .setContent(`<b>${f.name}</b><br/>${cap}<br/>状态：${meta2.label}`)
-          .openOn(map)
+          .openOn(currentMap)
       })
       .addTo(group)
     // 数量徽标：仅停放数 > 0 且放大到足够级别时展示
@@ -156,7 +160,7 @@ onMounted(async () => {
   } catch {
     /* 围栏列表拉取失败则不渲染该层 */
   }
-  const map = await getMapAsync()
+  map = await getMapAsync()
   if (disposed) {
     return
   }
@@ -171,7 +175,8 @@ onUnmounted(() => {
   group = null
   renderer?.remove()
   renderer = null
-  getMap().off('moveend', render)
+  map?.off('moveend', render)
+  map = null
 })
 
 watch(

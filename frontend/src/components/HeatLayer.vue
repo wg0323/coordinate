@@ -58,14 +58,23 @@ watch(
       return
     }
     if (!heat) {
-      heat = L.heatLayer(toPoints(bikes), {
+      const layer = L.heatLayer(toPoints(bikes), {
         // 固定色阶与饱和阈值：颜色只随真实密度变化，不随每批最大车数整体漂移
         gradient: HEAT_GRADIENT,
         max: HEAT_MAX,
         radius: HEAT_RADIUS,
         blur: HEAT_BLUR,
         minOpacity: 0.002
-      }).addTo(map)
+      })
+      // leaflet.heat 的 rAF 重绘帧可能在图层移除后才执行，此时 _map 已置空；
+      // 包装 _redraw 成安全空操作，避免插件在已销毁地图上取尺寸报错
+      const redraw = layer._redraw
+      layer._redraw = () => {
+        if ((layer as unknown as { _map?: L.Map | null })._map) {
+          redraw.call(layer)
+        }
+      }
+      heat = layer.addTo(map)
       map.on('zoomend', tuneForZoom)
       tuneForZoom()
       return

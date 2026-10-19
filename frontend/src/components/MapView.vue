@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
 import L from 'leaflet'
-import { setMap } from '../mapStore'
+import { clearMap, setMap } from '../mapStore'
 
 // dark: 大屏深色模式（CSS 滤镜方案——天地图无官方深色样式）
 const props = defineProps<{ dark?: boolean }>()
@@ -14,10 +14,11 @@ let map: L.Map | null = null
 const onWinResize = () => map?.invalidateSize()
 
 onMounted(() => {
-  map = L.map('map', { zoomControl: true }).setView([39.9, 116.4], 12)
+  map = L.map('map', { zoomControl: true, maxZoom: 18 }).setView([39.9, 116.4], 12)
   // 天地图（CGCS2000 工程上当 WGS84 用，无偏移）：vec_w 矢量底图 + cva_w 中文注记两层叠加
   // OSM 瓦片在国内网络不可达；高德为 GCJ-02 会与 WGS84 数据错位
-  const tk = 'fed715233e077afd01167f04904d6575'
+  // 天地图 key 从 .env.local 读取（VITE_TIANDITU_KEY），不写入仓库
+  const tk = import.meta.env.VITE_TIANDITU_KEY ?? ''
   const tdtLayer = (type: string) =>
     L.tileLayer(`https://t{s}.tianditu.gov.cn/DataServer?T=${type}&x={x}&y={y}&l={z}&tk=${tk}`, {
       subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
@@ -33,9 +34,12 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onWinResize)
-  // 销毁地图实例：移除所有图层/瓦片/画布（HMR 或整页重建时避免旧实例滞留）
-  map?.remove()
-  map = null
+  // 销毁地图实例：先断开共享引用，下一页面重建时图层会等待新实例，不会挂到已销毁的地图
+  if (map) {
+    clearMap(map)
+    map.remove()
+    map = null
+  }
 })
 </script>
 
