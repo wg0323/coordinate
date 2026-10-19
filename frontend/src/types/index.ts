@@ -43,3 +43,20 @@ export interface FenceAlert {
   lat: number
   ts: number
 }
+
+export interface TracePoint {
+  ts: number
+  lng: number
+  lat: number
+  /** 瞬时速度 m/s（后端字段注释写 km/h，实际为 m/s） */
+  speed: number
+}
+
+export interface TraceResult {
+  bikeId: string
+  rawCount: number
+  simplifiedCount: number
+  jtsSimplifiedCount: number
+  raw: TracePoint[]
+  simplified: TracePoint[]
+}
