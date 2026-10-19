@@ -17,8 +17,10 @@ import java.util.List;
  */
 public class MedianFilter extends KeyedProcessFunction<String, GpsPoint, GpsPoint> {
 
+    // 滑动窗口大小：保留最近 5 个点（含当前点）
     private static final int WINDOW = 5;
 
+    // 经度、纬度各自独立的窗口缓冲，状态按车辆（bikeId key）隔离
     private transient ListState<Double> lngBuffer;
     private transient ListState<Double> latBuffer;
 
@@ -33,6 +35,7 @@ public class MedianFilter extends KeyedProcessFunction<String, GpsPoint, GpsPoin
         List<Double> lngs = pruneToWindow(lngBuffer, point.getLng());
         List<Double> lats = pruneToWindow(latBuffer, point.getLat());
 
+        // 经纬度替换为窗口中的中值，其余字段原样透传
         out.collect(GpsPoint.builder()
                 .bikeId(point.getBikeId())
                 .district(point.getDistrict())
@@ -62,6 +65,7 @@ public class MedianFilter extends KeyedProcessFunction<String, GpsPoint, GpsPoin
     private double median(List<Double> values) {
         List<Double> sorted = new ArrayList<>(values);
         Collections.sort(sorted);
+        // 取中间位置元素：窗口补满后固定为第 3 个（共 5 个）
         return sorted.get(sorted.size() / 2);
     }
 }
