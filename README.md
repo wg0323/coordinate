@@ -146,6 +146,10 @@ node scripts/import-fences.mjs
 #    vehicle-ratio 为活跃车辆抽样比例。--mongo 默认 mongodb://192.168.1.25:27017/bike_monitor）
 java -jar device-simulator\target\device-simulator-1.0.0-SNAPSHOT.jar --kafka=192.168.1.25:9092 --speed-factor=20 --vehicle-ratio=0.1
 
+# 2.1 生成固定设备历史轨迹（沿 OSM 路网骑一天，需 Flink GpsCleanJob 已启动；发完即退出）
+java -jar device-simulator\target\device-simulator-1.0.0-SNAPSHOT.jar --mode=history-trace
+#    生成 BMXC000123 昨天 00:00–24:00 的 5 段行程，前端访问 http://localhost:5173/#/trace 查询
+
 # 3. 启动后端（application.yml 的 Redis/Mongo/Kafka/TDengine 已指向 192.168.1.25）
 java -jar api-server\target\api-server-1.0.0-SNAPSHOT.jar
 
