@@ -40,8 +40,11 @@
       <div v-if="result && !result.raw.length" class="empty">该时间段无轨迹</div>
     </main>
 
-    <footer class="panel trace-playback">
-      <span class="placeholder">查询后显示回放条（下一步接入）</span>
+    <footer v-if="result && result.raw.length" class="panel trace-playback">
+      <PlaybackBar v-model:ts="playbackTs" :points="result.raw" />
+    </footer>
+    <footer v-else class="panel trace-playback">
+      <span class="placeholder">查询后显示回放条</span>
     </footer>
   </div>
 </template>
@@ -50,6 +53,7 @@
 import { computed, onMounted, ref } from 'vue'
 import MapView from '../components/MapView.vue'
 import TraceLayer from '../components/trace/TraceLayer.vue'
+import PlaybackBar from '../components/trace/PlaybackBar.vue'
 import { fetchTrace } from '../api/trace'
 import { TRACE_COLORS, buildTraceStats } from '../utils/trace'
 import type { TraceResult } from '../types'
