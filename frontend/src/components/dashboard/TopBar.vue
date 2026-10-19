@@ -5,6 +5,7 @@
       <span class="title">北京城区共享单车实时监控平台</span>
     </div>
     <div class="right">
+      <a class="trace-link" href="#/trace">轨迹查询</a>
       <span class="weather">{{ WEATHER_TEXT }}</span>
       <span class="num clock breath">{{ clock }}</span>
       <span class="sys-status">
@@ -98,5 +99,16 @@ onBeforeUnmount(() => {
 .dot.bad {
   background: var(--danger);
   box-shadow: 0 0 8px var(--danger);
+}
+.trace-link {
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  padding: 3px 10px;
+}
+.trace-link:hover {
+  background: rgba(0, 212, 255, 0.12);
 }
 </style>
