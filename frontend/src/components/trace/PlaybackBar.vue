@@ -86,33 +86,41 @@ onBeforeUnmount(stop)
   width: 100%;
 }
 .btn {
-  width: 72px;
-  padding: 7px 0;
+  width: 80px;
+  padding: 8px 0;
   background: rgba(0, 212, 255, 0.15);
   border: 1px solid var(--accent);
   border-radius: 3px;
   color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
   cursor: pointer;
+}
+.btn:hover {
+  background: rgba(0, 212, 255, 0.25);
 }
 .range {
   flex: 1;
   accent-color: var(--accent);
 }
 .time {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-main);
-  min-width: 150px;
+  min-width: 160px;
 }
 .speed {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--accent);
-  min-width: 90px;
+  min-width: 100px;
 }
 .factor {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--panel-border);
   border-radius: 3px;
   color: var(--text-main);
-  padding: 5px;
+  padding: 6px;
+  font-size: 14px;
+  color-scheme: dark;
 }
 </style>

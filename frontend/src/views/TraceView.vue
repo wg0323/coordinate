@@ -128,7 +128,7 @@ onMounted(() => {
     'side map'
     'play play';
   grid-template-rows: 64px minmax(0, 1fr) 72px;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: minmax(300px, 22%) 1fr;
   gap: 10px;
   padding: 10px;
   background: var(--bg-main);
@@ -146,25 +146,29 @@ onMounted(() => {
   font-size: 13px;
 }
 .trace-top .title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
   color: var(--text-main);
 }
 .trace-top .sub {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 .trace-side {
   grid-area: side;
   overflow: hidden;
   box-sizing: border-box;
+  padding: 14px 16px;
+}
+.trace-side > .panel-title {
+  margin-bottom: 12px;
 }
 .trace-side .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 10px;
   font-size: 12px;
   color: var(--text-dim);
 }
@@ -175,19 +179,30 @@ onMounted(() => {
   border: 1px solid var(--panel-border);
   border-radius: 3px;
   color: var(--text-main);
-  padding: 5px 8px;
+  padding: 7px 10px;
   font-family: var(--font-num);
-  font-size: 13px;
+  font-size: 14px;
+  color-scheme: dark;
+}
+.trace-side input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.25);
 }
 .query {
   width: 100%;
-  padding: 8px;
+  padding: 9px;
   background: rgba(0, 212, 255, 0.15);
   border: 1px solid var(--accent);
   border-radius: 3px;
   color: var(--accent);
   font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
   cursor: pointer;
+}
+.query:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.25);
 }
 .query:disabled {
   opacity: 0.5;
@@ -202,25 +217,26 @@ onMounted(() => {
   font-size: 12px;
 }
 .stats-title {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 .stat {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: var(--text-dim);
-  padding: 3px 0;
+  padding: 5px 0;
   border-bottom: 1px dashed rgba(127, 155, 189, 0.15);
 }
 .stat b {
   color: var(--text-main);
+  font-size: 14px;
 }
 .legend {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-top: 12px;
-  padding-top: 8px;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 10px;
   border-top: 1px dashed rgba(127, 155, 189, 0.25);
   font-size: 12px;
   color: var(--text-dim);
@@ -231,7 +247,7 @@ onMounted(() => {
   gap: 8px;
 }
 .legend i {
-  width: 14px;
+  width: 16px;
   height: 4px;
   border-radius: 2px;
 }
@@ -257,6 +273,7 @@ onMounted(() => {
   grid-area: play;
   display: flex;
   align-items: center;
+  padding: 0 16px;
 }
 .placeholder {
   color: var(--text-dim);
