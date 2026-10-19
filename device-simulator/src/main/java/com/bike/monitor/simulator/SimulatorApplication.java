@@ -5,6 +5,7 @@ import com.bike.monitor.simulator.engine.SimEngine;
 import com.bike.monitor.simulator.generator.FenceParkingPlanner;
 import com.bike.monitor.simulator.generator.FleetGenerator;
 import com.bike.monitor.simulator.generator.RideGenerator;
+import com.bike.monitor.simulator.history.HistoryTraceRunner;
 import com.bike.monitor.simulator.model.Bike;
 import com.bike.monitor.simulator.noise.DriftInjector;
 import com.bike.monitor.simulator.report.Reporter;
@@ -34,6 +35,10 @@ public class SimulatorApplication {
 
     public static void main(String[] args) throws Exception {
         SimConfig config = SimConfig.parse(args);
+        if ("history-trace".equals(config.getMode())) {
+            HistoryTraceRunner.run(config);
+            return;
+        }
         log.info("模拟器启动：kafka={}, topic={}, mongo={}, speedFactor={}, vehicleRatio={}, driftRate={}, companionPairs={}, fenceParked={}",
                 config.getKafkaServers(), config.getTopic(), config.getMongoUri(),
                 config.getSpeedFactor(), config.getVehicleRatio(), config.getDriftRate(),

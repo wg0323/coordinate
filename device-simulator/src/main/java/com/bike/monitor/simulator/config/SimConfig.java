@@ -27,6 +27,14 @@ public class SimConfig {
     private long durationSec = 0;
     /** 模拟时钟持久化文件：跨次启动保持 ts 单调连续（避免下游 watermark 被回退的 ts 钉死） */
     private String clockFile = "data/sim-clock.txt";
+    /** 运行模式：空=常规模拟；history-trace=只生成固定设备一天历史轨迹 */
+    private String mode = "";
+    private String traceBike = "BMXC000123";
+    private String traceDistrict = "中心城区";
+    /** 1=昨天，0=今天 */
+    private int traceDayOffset = 1;
+    private int traceSegments = 5;
+    private long traceSeed = 42L;
 
     public static SimConfig parse(String[] args) {
         SimConfig config = new SimConfig();
@@ -83,6 +91,24 @@ public class SimConfig {
                 break;
             case "clock-file":
                 clockFile = value;
+                break;
+            case "mode":
+                mode = value;
+                break;
+            case "trace-bike":
+                traceBike = value;
+                break;
+            case "trace-district":
+                traceDistrict = value;
+                break;
+            case "trace-day-offset":
+                traceDayOffset = Integer.parseInt(value);
+                break;
+            case "trace-segments":
+                traceSegments = Integer.parseInt(value);
+                break;
+            case "trace-seed":
+                traceSeed = Long.parseLong(value);
                 break;
             default:
                 throw new IllegalArgumentException("未知参数: --" + key);
