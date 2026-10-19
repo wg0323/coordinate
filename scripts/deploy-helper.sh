@@ -19,13 +19,15 @@ cd "$(dirname "$0")"
 
 # ---------- stop 子命令：优雅关闭 ----------
 if [ "${1:-}" = "stop" ]; then
-    echo "[..] Kafka 优雅关闭（等 broker 注销 ZK 注册）..."
-    docker exec kafka kafka-server-stop.sh >/dev/null 2>&1 || echo "[WARN] kafka-server-stop.sh 执行失败（容器未在跑？）"
-    for i in $(seq 1 10); do
-        docker exec kafka bash -c 'echo > /dev/tcp/127.0.0.1/9092' >/dev/null 2>&1 || break
-        sleep 2
-    done
-    # 默认 10s 超时会把没关完的 Kafka 直接 SIGKILL，留下未刷盘的日志段，下次启动要全量恢复
+    # 必须单独先停 Kafka 并等它真正退出，不能直接 compose stop 全停：
+    #   1) compose 并发停止同一依赖层级的服务，而 kafka 与 zookeeper 之间没有 depends_on，
+    #      一起停时 ZK 可能先退出，Kafka 来不及关闭会话注销 /brokers/ids/1，下次启动就撞 NodeExistsException；
+    #   2) 容器内 kafka-server-stop.sh 在本镜像不可用：镜像基于 alpine，busybox 的 ps 不支持 `ps ax`，
+    #      脚本永远报 "No kafka server to stop"。
+    # docker stop 把 SIGTERM 发给 PID 1（start-kafka.sh 一路 exec 成 java），并阻塞到 Kafka 退出；
+    # -t 60 是给足刷盘时间，默认 10s 超时会把没关完的 Kafka 直接 SIGKILL，留下未刷盘的日志段。
+    echo "[..] 停止 Kafka（等它关闭 ZK 会话、注销 /brokers/ids/1）..."
+    docker compose -f docker-compose.yml stop -t 60 kafka
     docker compose -f docker-compose.yml stop -t 60
     echo "[OK] 已全部停止（数据保留在 ./data/，下次 ./deploy-helper.sh 恢复）"
     exit 0
