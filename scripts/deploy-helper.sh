@@ -62,28 +62,36 @@ for i in $(seq 1 10); do
     docker exec kafka sh -c 'printf "request.timeout.ms=3000\ndefault.api.timeout.ms=5000\n" > /tmp/probe.properties' 2>/dev/null && break
     sleep 1
 done
-for i in $(seq 1 60); do
-    kafka_ready && break
-    kafka_dead && { kafka_logs 40; fail "Kafka 容器已退出，未能就绪"; }
-    sleep 2
-done
-if ! kafka_ready; then
-    ids=$(zk_broker_ids)
+# 容器已退出就立即返回，别傻等满 60 轮
+kafka_wait() {
+    for i in $(seq 1 "${1:-60}"); do
+        kafka_ready && return 0
+        kafka_dead && return 1
+        sleep 2
+    done
+    return 1
+}
+# ZK 残留自愈：确认 /brokers/ids/1 真实存在才清理，避免假阳性
+kafka_heal_zk() {
+    local ids; ids=$(zk_broker_ids)
     if echo "$ids" | grep -q '\[1\]'; then
         echo "[WARN] ZK 存在残留 /brokers/ids/1（broker 无法注册），清理后重启 Kafka"
         docker exec zookeeper zkCli.sh rmr /brokers/ids/1 >/dev/null 2>&1
         docker restart kafka >/dev/null
-        for i in $(seq 1 60); do kafka_ready && break; sleep 2; done
-        kafka_ready || { kafka_logs 40; fail "Kafka 清理残留后仍未就绪"; }
+        return 0
+    fi
+    echo "[WARN] ls /brokers/ids = ${ids:-<zkCli 无输出，检查 zookeeper 容器>}（无残留，多半在恢复日志）"
+    return 1
+}
+
+if ! kafka_wait 60; then
+    kafka_logs 40
+    # 残留会让 broker 注册失败后秒退（exit 1），此时容器已不是 running，同样要自愈
+    if kafka_heal_zk; then
+        kafka_wait 60 || { kafka_logs 60; fail "Kafka 清理 ZK 残留后仍未就绪"; }
     else
-        echo "[WARN] Kafka 迟迟未就绪，ls /brokers/ids = ${ids:-<zkCli 无输出，检查 zookeeper 容器>}（无残留则多半在恢复日志）"
-        kafka_logs 20
-        for i in $(seq 1 60); do
-            kafka_ready && break
-            kafka_dead && { kafka_logs 40; fail "Kafka 容器已退出，未能就绪"; }
-            sleep 2
-        done
-        kafka_ready || { kafka_logs 60; fail "Kafka 仍未就绪，请按上方日志排查"; }
+        # 无残留时再给一次日志恢复的时间（非正常停止后首次启动会重放日志段）
+        kafka_wait 60 || { kafka_logs 60; fail "Kafka 仍未就绪，请按上方日志排查"; }
     fi
 fi
 ok "中间件已启动 (Redis/MongoDB/TDengine/ZK/Kafka)"
