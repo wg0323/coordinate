@@ -116,7 +116,17 @@ usePolling(pollFenceStats, 30_000)
   min-height: 0;
   overflow: hidden;
 }
-.area-left > :first-child {
-  flex: 1.3;
+/* 左列高度分配：指标/围栏内容少压缩，订单流多给高度 */
+.area-left > :nth-child(1) {
+  flex: 1.05;
+}
+.area-left > :nth-child(2) {
+  flex: 0.95;
+}
+.area-left > :nth-child(3) {
+  flex: 0.93;
+}
+.area-left > :nth-child(4) {
+  flex: 1.47;
 }
 </style>

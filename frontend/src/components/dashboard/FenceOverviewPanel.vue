@@ -35,6 +35,9 @@ const COUNTS = [
   display: flex;
   flex-direction: column;
 }
+.fence-overview .panel-title {
+  margin-bottom: 6px;
+}
 .counts {
   display: flex;
   flex-direction: column;
@@ -42,16 +45,15 @@ const COUNTS = [
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  justify-content: space-around;
+  justify-content: space-between;
 }
 .c-row {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--text-dim);
-  padding: 4px 0;
 }
 .dot {
   width: 8px;
@@ -71,8 +73,8 @@ const COUNTS = [
   justify-content: space-between;
   font-size: 12px;
   color: var(--text-dim);
-  margin-top: 4px;
-  padding-top: 6px;
+  margin-top: 2px;
+  padding-top: 4px;
   border-top: 1px dashed rgba(127, 155, 189, 0.15);
 }
 .avg-value {
