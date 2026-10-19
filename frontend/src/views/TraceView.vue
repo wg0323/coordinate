@@ -157,22 +157,25 @@ onMounted(() => {
 }
 .trace-side {
   grid-area: side;
-  overflow: auto;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .trace-side .field {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-size: 12px;
   color: var(--text-dim);
 }
 .trace-side input {
+  box-sizing: border-box;
+  width: 100%;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--panel-border);
   border-radius: 3px;
   color: var(--text-main);
-  padding: 6px 8px;
+  padding: 5px 8px;
   font-family: var(--font-num);
   font-size: 13px;
 }
@@ -206,7 +209,7 @@ onMounted(() => {
   justify-content: space-between;
   font-size: 12px;
   color: var(--text-dim);
-  padding: 4px 0;
+  padding: 3px 0;
   border-bottom: 1px dashed rgba(127, 155, 189, 0.15);
 }
 .stat b {
@@ -216,7 +219,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin-top: 16px;
+  margin-top: 12px;
   padding-top: 8px;
   border-top: 1px dashed rgba(127, 155, 189, 0.25);
   font-size: 12px;
