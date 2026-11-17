@@ -14,7 +14,6 @@ dist/
 
 # 文档
 docs/*
-!docs/images/
 .codebuddy/
 
 # 日志与运行时产物
